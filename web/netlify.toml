@@ -1,0 +1,6 @@
+# Use Netlify's Next.js runtime for proper SSR support
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NPM_CONFIG_LEGACY_PEER_DEPS = "true"

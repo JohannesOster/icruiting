@@ -1,0 +1,19 @@
+html
+  head
+    title icruiting-webform
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(
+      rel='stylesheet',
+      type='text/css',
+      href='https://cdn.jsdelivr.net/gh/JohannesOster/icruiting-theme-kit/base-theme/index.css'
+    )
+    script
+      include ic-iframe-resize.js
+
+  body(onload='post_iframe_size();')
+    #ic-iframe-container
+      if error
+        p.ic-font-300 Ein Fehler ist aufgetreten #{error}
+      else
+        p.ic-font-300 Bewerbung erfolgreich abgeschickt!

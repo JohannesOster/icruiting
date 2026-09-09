@@ -7,10 +7,7 @@ const config = {
     endpoint: {name: 'icruiting-api', url: 'http://localhost:5000'},
     loginCallbackUrl: 'http://localhost:3000/login/callback/',
     logoutCallbackUrl: 'http://localhost:3000/logout/',
-    userPoolDomain:
-      'https://icruiting-web-dev.auth.eu-central-1.amazoncognito.com',
-    discordContactWebHook:
-      'https://discord.com/api/webhooks/1091469616921981119/xr8rE7R8tY3AhysM3Tg2_Z0mocAUQS5WyPwGBuAmLQvRzpuN_tASqWEvlKIz6dPZtCRo',
+    userPoolDomain: 'https://icruiting-web-dev.auth.eu-central-1.amazoncognito.com',
   },
   production: {
     region: 'eu-central-1',
@@ -23,10 +20,7 @@ const config = {
     },
     loginCallbackUrl: 'https://icruiting.at/login/callback/',
     logoutCallbackUrl: 'https://icruiting.at/logout/',
-    userPoolDomain:
-      'https://icruiting-web-prod.auth.eu-central-1.amazoncognito.com',
-    discordContactWebHook:
-      'https://discord.com/api/webhooks/1091469616921981119/xr8rE7R8tY3AhysM3Tg2_Z0mocAUQS5WyPwGBuAmLQvRzpuN_tASqWEvlKIz6dPZtCRo',
+    userPoolDomain: 'https://icruiting-web-prod.auth.eu-central-1.amazoncognito.com',
   },
 };
 

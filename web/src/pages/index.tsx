@@ -1,17 +1,12 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect} from 'react';
 import {useTheme} from 'styled-components';
 import {useRouter} from 'next/router';
 import Link from 'next/link';
-import {Box, Button, DisplayL, HeadingM, Input, Textarea, Typography} from 'components';
+import {Box, Button, DisplayL, Typography} from 'components';
 import {Bunny} from 'icons';
-import {useForm} from 'react-hook-form';
 
 import styled, {css} from 'styled-components';
-import config from 'config';
-import {useAnalytics, useToaster} from 'context';
-import {object, string} from 'yup';
-import {yupResolver} from '@hookform/resolvers';
-import {errorsFor} from 'utils/react-hook-form-errors-for';
+import {useAnalytics} from 'context';
 
 export const Container = styled.div`
   display: flex;
@@ -57,41 +52,6 @@ const FeaturesGrid = styled.div`
 const LandingPage: React.FC = () => {
   const {spacing} = useTheme();
   const router = useRouter();
-  const formRef = useRef<HTMLFormElement>();
-  const {success, danger} = useToaster();
-  const [loading, setLoading] = useState(false);
-
-  const {handleSubmit, register, formState, errors} = useForm({
-    mode: 'onChange',
-    criteriaMode: 'all',
-    resolver: yupResolver(
-      object({
-        name: string().required('Bitte gibt Deinen Namen ein.'),
-        email: string().email('Bitte gib eine gültige E-Mail-Adresse an.'),
-        message: string().required('Bitte gibt Deine Nachricht ein.'),
-      }),
-    ),
-  });
-
-  const _onSubmit = (values) => {
-    setLoading(true);
-    const msg = `*${values.name} (${values.email}) wrote:*\n${values.message}`;
-    fetch(config.discordContactWebHook, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({content: msg}),
-    })
-      .then(() => {
-        success('Nachricht erfolgreich gesendet!');
-        formRef.current.reset();
-      })
-      .catch(() => {
-        danger('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
 
   return (
     <>
@@ -122,61 +82,6 @@ const LandingPage: React.FC = () => {
               <Button onClick={() => router.push('/signup')}>Registrieren</Button>
             </Box>
           </Hero>
-          {/* CONTACT */}
-          {/* <Box
-            id="contact"
-            display="flex"
-            flexDirection="column"
-            alignItems="start"
-            gap={spacing.scale600}
-          >
-            <Box>
-              <HeadingM>Kontakt</HeadingM>
-              <Typography color="secondary">Wir antworten schnell 🏃</Typography>
-            </Box>
-            <form
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: spacing.scale400,
-                width: '100%',
-              }}
-              ref={formRef}
-              onSubmit={handleSubmit(_onSubmit)}
-            >
-              <Input
-                label="Name"
-                placeholder="Name"
-                name="name"
-                ref={register({required: true})}
-                errors={errorsFor(errors, 'name')}
-              />
-              <Input
-                label="E-Mail-Adresse"
-                placeholder="E-Mail-Adresse"
-                name="email"
-                ref={register({required: true})}
-                type="email"
-                errors={errorsFor(errors, 'email')}
-              />
-              <Textarea
-                label="Nachricht"
-                placeholder="Nachricht"
-                name="message"
-                ref={register({required: true})}
-                errors={errorsFor(errors, 'message')}
-              />
-              <Box>
-                <Button
-                  type="submit"
-                  disabled={!(formState.isDirty && formState.isValid)}
-                  isLoading={loading}
-                >
-                  Senden
-                </Button>
-              </Box>
-            </form>
-          </Box> */}
         </Box>
         <Footer style={{position: 'relative'}}>
           <Bunny

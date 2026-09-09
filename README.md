@@ -8,4 +8,4 @@ Recruiting/assessment tool for student consultancies — https://icruiting.at
 See `CLAUDE.md` for how to work in this repo and `AUDIT.md` for the state of the codebase and the roadmap.
 Issues live in Linear, project **icruiting** (team JO).
 
-Merged from the former `icruiting-server` and `icruiting-web` repositories on 2026-09-09 with full history (`git log --follow` works across the move).
+Merged from the former `icruiting-server` and `icruiting-web` repositories on 2026-09-09 with full history: `git blame` and `git log -m --follow <path>` work across the move (plain `--follow` needs `-m` to cross the subtree merge).

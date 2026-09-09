@@ -1,26 +1,26 @@
 # icruiting
 
 Recruiting/assessment tool for student consultancies, live at https://icruiting.at. German-language UI.
-Two repos side by side here (a monorepo merge is planned, JO-9):
+One repo, two packages (merged from two repos on 2026-09-09, JO-9; full history preserved):
 
-- `icruiting-server/` — Express + TypeScript API, Postgres via pg-promise (SQL lives in `.sql` files next to the repository code), Cognito auth, S3 uploads, Puppeteer PDF reports. Uses **yarn**. Deployed on Heroku.
-- `icruiting-web/` — Next.js 13 pages router, React 18, styled-components, Amplify/Cognito, SWR. Uses **npm**. Deployed on Netlify.
+- `server/` — Express + TypeScript API, Postgres via pg-promise (SQL lives in `.sql` files next to the repository code), Cognito auth, S3 uploads, Puppeteer PDF reports. Uses **yarn**. Deployed on Heroku.
+- `web/` — Next.js 13 pages router, React 18, styled-components, Amplify/Cognito, SWR. Uses **npm**. Deployed on Netlify (base directory `web`, root `netlify.toml`).
 
 Background reading: `AUDIT.md` (architecture, findings, roadmap). Read the section relevant to your ticket, not the whole file.
 
 ## Work is tracked in Linear
 
-`.linear.md` has the team/project. **The ticket is the spec** — start by reading it (`linear` skill) including comments. Tickets reference `file:line`; those were accurate on 2026-09-04, re-verify before editing.
+`.linear.md` has the team/project. **The ticket is the spec** — start by reading it (`linear` skill) including comments. Tickets reference `file:line`; those were accurate on 2026-09-04 and predate the monorepo — prefix them with `server/` or `web/`, and re-verify before editing.
 
 Handoff protocol for an implementation session:
 1. Move the ticket to `In Progress`.
-2. Branch from `main` in the affected repo: `jo-<number>-<short-slug>`.
+2. Branch from `main`: `jo-<number>-<short-slug>`. Prefer a worktree: `scripts/worktree.sh jo-<number>-<short-slug>` creates `.worktrees/<branch>/` with `.env.*` and `node_modules` linked in, so it runs immediately. Open that folder as the workspace.
 3. Do only what the ticket says. Anything else you notice → create a new Linear issue in the `icruiting` project (prefix `server:`/`web:`/`infra:`), don't fix it in passing.
 4. Commit, push the branch, open a PR with `gh`, and comment the PR URL + what you verified on the ticket. Leave the ticket `In Progress` — the owner merges and moves it to `Done`.
 
 ## Hard rules
 
-- **Pushing to `main` (or `develop`) deploys to production** — Netlify builds `main` on push; Heroku is wired the same way. Never push to those branches. PRs only.
+- **Pushing to `main` deploys to production** — Netlify builds `main` on push (web), and `.github/workflows/deploy-server.yml` pushes a `git subtree split` of `server/` to Heroku on every `main` push that touches it. Never push to `main`. PRs only.
 - Production data stays untouched: no `DATABASE_URL` pointing at RDS, no Cognito prod pool, no Stripe live key. Local Postgres only. Heroku is the exception — see "Heroku access" below.
 - Prefer "observe, then change" for anything that alters live behaviour (routes, emails, auth). If a ticket says to verify usage first, do that and report — don't skip to the removal.
 - Secrets: `.env*` files are git-ignored and must stay that way. Never commit webhooks, keys, or pool IDs beyond the ones already in `web/src/config.ts` (which are being moved to env, JO-23).
@@ -53,20 +53,20 @@ To confirm alerting end to end: `GET /forms/not-a-uuid/html` returns a genuine 5
 The VPS has Node 24, yarn 1, Postgres 18 on `127.0.0.1:5432`, Java 25 (for Liquibase), `gh` authed, `heroku` authed (see below). No Docker, no netlify/aws CLIs.
 
 Server:
-- `cd icruiting-server && yarn` (yarn.lock is the source of truth).
+- `cd server && yarn` (yarn.lock is the source of truth).
 - Config comes from `.env.<NODE_ENV>` via convict (`src/config.ts`). There is no `.env.example` yet — create `.env.development` / `.env.test` locally from the var list in `src/config.ts`; every var defaults to `''` so missing ones fail late, not at startup.
 - `yarn test:unit` needs nothing external. `yarn test:integration` needs a Postgres reachable via `DATABASE_URL` and `LIQUIBASE_*` (it runs Liquibase `update` in `tests/integration/jest.setup.js` and `drop-all` in teardown — point it at a throwaway database, never a shared one).
 - `yarn dev` → port 5000 (`PORT`). Bind `0.0.0.0` and report `http://agent-vps:5000`.
 - Typecheck: `npx tsc --noEmit -p tsconfig.json`. Lint is tslint (empty rules) — treat `prettier --check` as the real formatter gate.
 
 Web:
-- `cd icruiting-web && npm install` (package-lock; Netlify uses `NPM_CONFIG_LEGACY_PEER_DEPS=true`, you'll need `--legacy-peer-deps` too).
+- `cd web && npm install` (package-lock; Netlify uses `NPM_CONFIG_LEGACY_PEER_DEPS=true`, you'll need `--legacy-peer-deps` too).
 - `npm run dev` → Next dev server; run with `-H 0.0.0.0` and report `http://agent-vps:3000`. `NEXT_PUBLIC_APP_ENV` unset → `development` config (`src/config.ts`), which targets the dev Cognito pool and `http://localhost:5000`.
 - `npx tsc --noEmit`, `npm test` (two unit tests), `npm run build` is the real gate.
 
 ## Conventions
 
-- Prettier: single quotes, trailing commas, no bracket spacing, 100 cols (`.prettierrc` in both repos). Run it on files you touch.
+- Prettier: single quotes, trailing commas, no bracket spacing, 100 cols (`.prettierrc` in both packages). Run it on files you touch.
 - Server modules follow `domain/ → mappers/ → application/*Adapter.ts → infrastructure/{http,repositories}`; new code goes in the same shape. Handlers return `{status, body}` through `httpReqHandler`.
 - Web components: `X.tsx` + `X.sc.ts` + `types.ts` + `index.ts`, exported via `src/components/index.ts`. Pages wrap with `withAuth`/`withAdmin`.
 - UI copy is German; keep it that way and don't introduce i18n scaffolding unless a ticket asks.

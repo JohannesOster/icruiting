@@ -1,0 +1,43 @@
+# Deploys server/ to the Heroku app `icruiting-api` on every push to main that touches it.
+# Heroku expects the app at the repo root, so we push a `git subtree split` of server/
+# (a synthetic linear history of just that directory) to Heroku's git remote.
+# The push uses --force because the split history is regenerated on every run.
+# Requires the repo secret HEROKU_API_KEY (a Heroku authorization token).
+name: Deploy server to Heroku
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: heroku-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split server/ into its own history
+        id: split
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          sha=$(git subtree split --prefix=server HEAD)
+          echo "split=$sha" >> "$GITHUB_OUTPUT"
+          echo "server/ split commit: $sha"
+
+      - name: Push to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          git push -f \
+            "https://heroku:${HEROKU_API_KEY}@git.heroku.com/icruiting-api.git" \
+            "${{ steps.split.outputs.split }}:refs/heads/main"

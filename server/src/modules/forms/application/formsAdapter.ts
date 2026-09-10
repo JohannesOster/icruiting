@@ -1,5 +1,4 @@
 import {v4 as uuid} from 'uuid';
-import config from 'config';
 import {DB} from '../infrastructure/db';
 import {BaseError} from 'application';
 import {validateSubscription} from './utils';
@@ -87,7 +86,9 @@ export const FormsAdapter = (db: DB) => {
       return {view: 'form', body: {error: message}};
     }
 
-    const submitAction = config.get('baseUrl') + req.originalUrl;
+    // Relative on purpose: the form must post back to whichever host served it,
+    // so the iframe origin keeps matching the embed snippet's event.origin check.
+    const submitAction = req.originalUrl;
     const params = {
       formId,
       submitAction,

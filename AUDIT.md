@@ -117,7 +117,7 @@ Discovered 2026-09-07: the iframe snippet customers paste into their sites is ge
 Phase 4 then reduces to flipping one CNAME.
 
 ### Phase 1 — Monorepo + working dev loop (week)
-- `git subtree` both repos into `icruiting/{server,web}` preserving history; one `README`, one `CLAUDE.md`, `.env.example`s.
+- ~~`git subtree` both repos into `icruiting/{server,web}` preserving history~~ **done 2026-09-10** (JO-9): github.com/JohannesOster/icruiting, Heroku via `deploy-server.yml`, Netlify via `base = web`, old repos archived. `.env.example`s still open.
 - Get integration tests running against the local Postgres on this VPS; make `yarn test` green in both packages.
 - Replace tslint with ESLint + Prettier in both; add a GitHub Actions workflow (lint, typecheck, test, build).
 - Replace Liquibase (JVM) with a plain SQL migration runner (e.g. `node-pg-migrate` or a 40-line script); fold the two changesets into a baseline.

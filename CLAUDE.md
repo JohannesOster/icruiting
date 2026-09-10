@@ -31,6 +31,8 @@ The API runs as the Heroku app **`icruiting-api`** (the account's only app). The
 
 Granted 2026-09-07 for the JO-3 deploy: read freely (logs, releases, config, `ps`), and set/unset config vars. **The owner still merges every PR** — merging is what deploys, so it stays a human action.
 
+Deploys reach Heroku only through `.github/workflows/deploy-server.yml` (git push of the `server/` split to `git.heroku.com/icruiting-api.git`, authenticated with the repo secret `HEROKU_API_KEY`). The old GitHub-integration path from the archived `icruiting-server` repo is dead. Re-run a deploy of the current `main` with `gh workflow run "Deploy server to Heroku"`. Heroku's git remote is only ever written by that workflow; do not push to it by hand.
+
 Gotchas, in the order they bite:
 
 - `heroku login` on this VPS always fails with an IP mismatch — the browser completing the auth is on a different network. The token above is the way in; mint replacements on a machine with a browser (`heroku authorizations:create`).
@@ -39,6 +41,10 @@ Gotchas, in the order they bite:
 - `NODE_ENV` is **not** a config var — `yarn start` runs pm2 with `--env production`, and `src/ecosystem.config.ts` injects it there. `heroku config:get NODE_ENV` returns empty on a healthy app. To check it behaviourally: `middlewares.ts` leaks `err.stack` in responses whenever `NODE_ENV !== 'production'`, so a 404 body carrying no `stack` proves it.
 - `heroku run -- node -e '…'` executes on a dyno with the real env, which diagnoses credential and config questions without pulling secrets onto this box.
 - Config vars removed during JO-3/42/43 are backed up at `~/.config/heroku/removed-config-vars.*.json`, should a restore be needed.
+
+## Netlify access
+
+The web app is the Netlify site **`icruiting`** (`5e9234ed-469e-43ee-bf93-c0e9e49fcf34`), built from this repo's `main` with base directory `web` (root `netlify.toml`). The CLI is at `~/.local/bin/netlify`; a personal access token lives in `~/.config/netlify/token` (mode 600) — export it as `NETLIFY_AUTH_TOKEN` for each call, e.g. `NETLIFY_AUTH_TOKEN=$(cat ~/.config/netlify/token) netlify api listSiteDeploys --data '{"site_id":"5e92…"}'`. `netlify api <method>` gives the whole REST API; `getSite`, `listSiteDeploys`, `getDeploy` cover most questions. Merging to `main` is the deploy; PRs get deploy previews automatically. Site settings changes (`updateSite`) are owner-approved actions.
 
 ## Error alerting
 
@@ -50,7 +56,7 @@ To confirm alerting end to end: `GET /forms/not-a-uuid/html` returns a genuine 5
 
 ## Running things locally
 
-The VPS has Node 24, yarn 1, Postgres 18 on `127.0.0.1:5432`, Java 25 (for Liquibase), `gh` authed, `heroku` authed (see below). No Docker, no netlify/aws CLIs.
+The VPS has Node 24, yarn 1, Postgres 18 on `127.0.0.1:5432`, Java 25 (for Liquibase), `gh` authed, `heroku` and `netlify` authed (see above). No Docker, no aws CLI.
 
 Server:
 - `cd server && yarn` (yarn.lock is the source of truth).

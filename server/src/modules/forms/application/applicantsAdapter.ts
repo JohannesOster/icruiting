@@ -35,8 +35,12 @@ export const ApplicantsAdapter = (db: DB) => {
     }
 
     // formidable.maxFileSize = 500 * 1024 * 1024;
+    // An untouched <input type="file"> still sends a part (filename="", zero bytes). formidable
+    // v3 rejects empty files by default, so drop those parts before it sees them; the field then
+    // simply counts as not submitted, which the required-check below handles.
+    const parser = formidable({filter: ({originalFilename}) => !!originalFilename});
     return new Promise((resolve, reject) => {
-      formidable().parse(req, async (error, fields, files) => {
+      parser.parse(req, async (error, fields, files) => {
         if (error) return resolve({view: 'form-submission', body: {error}});
 
         const promises = [];

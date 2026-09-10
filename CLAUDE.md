@@ -60,8 +60,8 @@ The VPS has Node 24, yarn 1, Postgres 18 on `127.0.0.1:5432`, Java 25 (for Liqui
 
 Server:
 - `cd server && yarn` (yarn.lock is the source of truth).
-- Config comes from `.env.<NODE_ENV>` via convict (`src/config.ts`). There is no `.env.example` yet — create `.env.development` / `.env.test` locally from the var list in `src/config.ts`; every var defaults to `''` so missing ones fail late, not at startup.
-- `yarn test:unit` needs nothing external. `yarn test:integration` needs a Postgres reachable via `DATABASE_URL` and `LIQUIBASE_*` (it runs Liquibase `update` in `tests/integration/jest.setup.js` and `drop-all` in teardown — point it at a throwaway database, never a shared one).
+- Config comes from `.env.<NODE_ENV>` via convict (`src/config.ts`), resolved against the cwd — run server commands from `server/`. Copy `server/.env.example` to `.env.development` / `.env.test`; it documents every var and which ones the tests need. Most default to `''` so missing ones fail late, not at startup — but `LIQUIBASE_LOG_LEVEL`, `API_BASE_URL`, `PORT` and `NODE_ENV` have real defaults, and a blank line overrides those with `''` where an absent line would not. `server/README.md` has the local setup, incl. the two databases (`icruiting_dev`, `icruiting_test`) those files expect.
+- `yarn test:unit` needs nothing external. `yarn test:integration` needs a Postgres reachable via `DATABASE_URL` and `LIQUIBASE_*` (it runs Liquibase `update` in `tests/integration/jest.setup.js` and `drop-all` in teardown — point it at a throwaway database, never a shared one). Both run green against the local Postgres — see `server/README.md` (JO-10).
 - `yarn dev` → port 5000 (`PORT`). Bind `0.0.0.0` and report `http://agent-vps:5000`.
 - Typecheck: `npx tsc --noEmit -p tsconfig.json`. Lint is tslint (empty rules) — treat `prettier --check` as the real formatter gate.
 

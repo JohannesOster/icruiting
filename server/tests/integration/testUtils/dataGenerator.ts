@@ -1,5 +1,5 @@
 import db, {pgp} from 'infrastructure/db';
-import fake from './fake';
+import fake, {TenantOverrides} from './fake';
 import {random} from 'faker';
 import {DBJob, JobsRepository} from 'modules/jobs/infrastructure/repositories/jobsRepository';
 import {FormsRepository} from 'modules/forms/infrastructure/db/repositories';
@@ -18,8 +18,8 @@ const formSubmissionsRepo = FormSubmissionsRepository({db, pgp});
 const applicantsRepo = ApplicantsRepository({db, pgp});
 
 const dataGenerator = {
-  insertTenant: (tenantId: string = random.uuid()) => {
-    const tenant = fake.tenant(tenantId);
+  insertTenant: (tenantId: string = random.uuid(), overrides: TenantOverrides = {}) => {
+    const tenant = fake.tenant(tenantId, overrides);
     return tenantsRepo.create(tenant);
   },
   insertJob: (tenantId: string, requirements: JobRequirement[] | undefined = undefined) => {

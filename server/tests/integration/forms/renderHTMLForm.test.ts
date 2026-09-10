@@ -4,6 +4,7 @@ import app from 'infrastructure/http';
 import {endConnection, truncateAllTables} from 'infrastructure/db/setup';
 import dataGenerator from '../testUtils/dataGenerator';
 import {Form} from 'modules/forms/domain';
+import logger from 'shared/infrastructure/logger';
 
 // The public form renders only for a tenant with an active subscription;
 // without a customer id it falls back to the error view.
@@ -41,6 +42,31 @@ describe('forms', () => {
         .expect(200);
 
       expect(text).toContain(`action="/forms/${form.id}/html"`);
+    });
+
+    it('logs the embedding page, so we can see which customer site uses the form', async () => {
+      const info = jest.spyOn(logger, 'info');
+
+      await request(app)
+        .get(`/forms/${form.id}/html`)
+        .set('Accept', 'text/html')
+        .set('Referer', 'https://kunde.at/karriere')
+        .set('X-Forwarded-Proto', 'https')
+        .expect(200);
+
+      expect(info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'public_form_request',
+          method: 'GET',
+          path: `/forms/${form.id}/html`,
+          formId: form.id,
+          referer: 'https://kunde.at/karriere',
+          forwardedProto: 'https',
+        }),
+        'public form request',
+      );
+
+      info.mockRestore();
     });
   });
 });

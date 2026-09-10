@@ -23,7 +23,10 @@ psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE icruiting_test OWNER $USER;"
 ```
 
 `yarn dev` starts the API on `PORT` (default 5000). Schema changes are applied with
-`yarn db-migrate` (Liquibase `update`, needs a JVM); `yarn db-drop` reverses it.
+`yarn db-migrate` (Liquibase `update`, needs a JVM). `yarn db-drop` is not its inverse —
+it is Liquibase `drop-all`, which drops every object in the schema, data included.
+`yarn db-sync` marks the changelog as applied without running it, for a database that
+already has the schema.
 
 ## Tests
 

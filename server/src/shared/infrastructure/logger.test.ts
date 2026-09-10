@@ -10,10 +10,24 @@ jest.mock('config', () => ({
 import https from 'https';
 import http from 'http';
 import config from 'config';
-import logger from './logger';
+import logger, {pinoOptionsFor} from './logger';
 
 const mockedConfigGet = config.get as jest.Mock;
 const fakeReq = () => ({write: jest.fn(), on: jest.fn(), end: jest.fn()});
+
+describe('pinoOptionsFor', () => {
+  it('is silent in test', () => {
+    expect(pinoOptionsFor('test')).toEqual({level: 'silent'});
+  });
+
+  it('pretty-prints for the dev terminal', () => {
+    expect(pinoOptionsFor('development')).toHaveProperty('transport.target', 'pino-pretty');
+  });
+
+  it('leaves production on pino default one-line JSON', () => {
+    expect(pinoOptionsFor('production')).toEqual({level: 'info'});
+  });
+});
 
 describe('logger.ntfy', () => {
   afterEach(() => {

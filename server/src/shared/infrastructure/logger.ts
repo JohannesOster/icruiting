@@ -3,32 +3,47 @@ import https from 'https';
 import http from 'http';
 import config from 'config';
 
+// 'debug' | 'info' | 'warn' | 'error' | 'critical'
+const LEVEL = 'info';
+
+export const pinoOptionsFor = (env: string) => {
+  if (env === 'test') return {level: 'silent'};
+  // pino-pretty turns one log line into several ANSI-coloured ones, which a log
+  // drain then indexes as unrelated entries. Keep it for the dev terminal only;
+  // production writes pino's default one-line JSON (JO-47).
+  if (env === 'development') {
+    return {
+      level: LEVEL,
+      transport: {target: 'pino-pretty', options: {colorize: true, sync: true}},
+    };
+  }
+  return {level: LEVEL};
+};
+
 const Logger = () => {
-  const ops =
-    config.get('env') === 'test'
-      ? {level: 'silent'}
-      : {
-          level: 'info', // 'debug' | 'info' | 'warn' | 'error' | 'critical';
-          transport: {target: 'pino-pretty', options: {colorize: true, sync: true}},
-        };
+  const ops = pinoOptionsFor(config.get('env'));
   const pino = require('pino');
 
   const _logger = pino(ops);
 
-  const debug = (message: string, ...args: unknown[]) => {
-    _logger.debug(message, ...args);
+  // pino accepts either (message, ...interpolationArgs) or (mergingObject, message) -
+  // the latter is what puts fields at the top level of the JSON line.
+  type LogFn = (messageOrObject: string | object, ...args: unknown[]) => void;
+
+  const debug: LogFn = (messageOrObject, ...args) => {
+    _logger.debug(messageOrObject, ...args);
   };
 
-  const info = (message: string, ...args: unknown[]) => {
-    _logger.info(message, ...args);
+  const info: LogFn = (messageOrObject, ...args) => {
+    _logger.info(messageOrObject, ...args);
   };
 
-  const warning = (message: string, ...args: unknown[]) => {
-    _logger.warn(message, ...args);
+  const warning: LogFn = (messageOrObject, ...args) => {
+    _logger.warn(messageOrObject, ...args);
   };
 
-  const error = (message: string, ...args: unknown[]) => {
-    _logger.error(message, ...args);
+  const error: LogFn = (messageOrObject, ...args) => {
+    _logger.error(messageOrObject, ...args);
   };
 
   // Only publishes in production - dev/test have no NTFY_TOPIC configured.

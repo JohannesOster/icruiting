@@ -8,6 +8,8 @@ import jobsMapper from 'modules/jobs/mappers/jobsMapper';
 import {createTenant} from 'modules/tenants/domain';
 import {tenantsMapper} from 'modules/tenants/mappers';
 
+export type TenantOverrides = {stripeCustomerId?: string};
+
 const fake = {
   user: (userRole: 'admin' | 'member' = 'admin') => ({
     tenantId: faker.random.uuid(),
@@ -15,8 +17,8 @@ const fake = {
     email: faker.internet.email(),
     userRole,
   }),
-  tenant: (tenantId?: string) => {
-    const tenant = createTenant({tenantName: faker.company.companyName()}, tenantId);
+  tenant: (tenantId?: string, overrides: TenantOverrides = {}) => {
+    const tenant = createTenant({tenantName: faker.company.companyName(), ...overrides}, tenantId);
     return tenantsMapper.toPersistance(tenant);
   },
   job: (tenantId: string, requirements: JobRequirement[] | undefined = undefined) => {

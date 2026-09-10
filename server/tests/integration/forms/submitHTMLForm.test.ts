@@ -1,20 +1,52 @@
-import {random, internet} from 'faker';
+import {random, internet, name} from 'faker';
 import request from 'supertest';
 import app from 'infrastructure/http';
+import db, {pgp} from 'infrastructure/db';
 import {endConnection, truncateAllTables} from 'infrastructure/db/setup';
 import dataGenerator from '../testUtils/dataGenerator';
 import Mail from 'nodemailer/lib/mailer';
 import {Form} from 'modules/forms/domain';
 import logger from 'shared/infrastructure/logger';
+import {ApplicantsRepository} from 'modules/applicants/infrastructure/repositories/applicantsRepository';
 
 jest.mock('shared/infrastructure/services/mailService/mailService', () => ({
   sendMail: jest.fn((options: Mail.Options) => Promise.resolve({})),
 }));
 
+// Submissions are only accepted for tenants with an active subscription; keep Stripe out of it.
+jest.mock('shared/infrastructure/services/paymentService', () => ({
+  __esModule: true,
+  default: {subscriptions: {listActive: jest.fn(() => Promise.resolve([{id: 'sub_test'}]))}},
+}));
+
+const applicantsRepo = ApplicantsRepository({db, pgp});
+
+/**
+ * Builds a multipart/form-data body the way a browser does, including the part an untouched
+ * `<input type="file">` still produces: `filename=""`, `application/octet-stream`, zero bytes.
+ */
+const multipartBody = (
+  boundary: string,
+  parts: {name: string; value?: string; emptyFile?: boolean}[],
+) => {
+  const lines = parts.flatMap(({name: fieldName, value, emptyFile}) =>
+    emptyFile
+      ? [
+          `--${boundary}`,
+          `Content-Disposition: form-data; name="${fieldName}"; filename=""`,
+          'Content-Type: application/octet-stream',
+          '',
+          '',
+        ]
+      : [`--${boundary}`, `Content-Disposition: form-data; name="${fieldName}"`, '', value ?? ''],
+  );
+  return [...lines, `--${boundary}--`, ''].join('\r\n');
+};
+
 let tenantId: string;
 let jobId: string;
 beforeAll(async () => {
-  tenantId = (await dataGenerator.insertTenant(random.uuid())).id;
+  tenantId = (await dataGenerator.insertTenant(random.uuid(), {stripeCustomerId: 'cus_test'})).id;
   jobId = (await dataGenerator.insertJob(tenantId)).id;
 });
 
@@ -68,6 +100,39 @@ describe('forms', () => {
       );
 
       info.mockRestore();
+    });
+
+    it('accepts a submission that leaves an optional file_upload empty', async () => {
+      const fieldByComponent = (component: string) =>
+        form.formFields.find((field) => field.component === component)!;
+      const fieldByLabel = (label: string) =>
+        form.formFields.find((field) => field.label === label)!;
+      const fileField = fieldByComponent('file_upload');
+      expect(fileField.required).toBeFalsy();
+
+      const boundary = '----icruitingTestBoundary';
+      const body = multipartBody(boundary, [
+        {name: fieldByLabel('E-Mail-Adresse').id, value: internet.email()},
+        {name: fieldByLabel('Vollständiger Name').id, value: name.findName()},
+        {name: fileField.id, emptyFile: true},
+      ]);
+
+      const resp = await request(app)
+        .post(`/forms/${form.id}/html`)
+        .set('Accept', 'text/html')
+        .set('Content-Type', `multipart/form-data; boundary=${boundary}`)
+        .send(body)
+        .expect('Content-Type', /html/)
+        .expect(200);
+
+      expect(resp.text).toContain('Bewerbung erfolgreich abgeschickt!');
+      expect(resp.text).not.toContain('Ein Fehler ist aufgetreten');
+
+      const {applicants} = await applicantsRepo.list({tenantId, jobId, userId: random.uuid()});
+      expect(applicants).toHaveLength(1);
+      expect(applicants[0].attributes.map(({formFieldId}) => formFieldId)).not.toContain(
+        fileField.id,
+      );
     });
   });
 });

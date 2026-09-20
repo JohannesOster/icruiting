@@ -105,6 +105,7 @@ describe('tenants', () => {
 
       expect(body.tenant.tenantName).toBe(tenant.tenantName);
       expect(!!body.tenant.tenantId).toBe(true);
+      expect(body.tenant.stripeCustomerId).toBeUndefined();
     });
   });
 });

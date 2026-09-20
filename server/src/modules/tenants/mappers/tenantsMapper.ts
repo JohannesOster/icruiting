@@ -6,8 +6,12 @@ const toPersistance = (tenant: TenantEntity): DBTenant => {
   return Object.freeze({tenantId, ..._tenant});
 };
 
+/**
+ * The client-facing shape: renames id → tenantId and drops the Stripe customer id,
+ * which is only used server-side.
+ */
 const toDTO = (tenant: TenantEntity) => {
-  const {id: tenantId, ..._tenant} = tenant;
+  const {id: tenantId, stripeCustomerId: _stripeCustomerId, ..._tenant} = tenant;
   return Object.freeze({tenantId, ..._tenant});
 };
 

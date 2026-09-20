@@ -46,8 +46,17 @@ describe('tenants', () => {
         .set('Accept', 'application/json')
         .expect(200);
 
-      expect(resp.body.id).toBe(mockUser.tenantId);
+      expect(resp.body.tenantId).toBe(mockUser.tenantId);
       expect(resp.body.theme).toBeUndefined();
+    });
+
+    it('returns the DTO shape without internal fields', async () => {
+      const resp = await request(app)
+        .get(`/tenants/${mockUser.tenantId}`)
+        .set('Accept', 'application/json')
+        .expect(200);
+
+      expect(Object.keys(resp.body).sort()).toEqual(['tenantId', 'tenantName']);
     });
 
     it('returns a signed url for the theme when the tenant has one', async () => {
@@ -59,7 +68,7 @@ describe('tenants', () => {
         .expect('Content-Type', /json/)
         .expect(200);
 
-      expect(resp.body.id).toBe(mockUser.tenantId);
+      expect(resp.body.tenantId).toBe(mockUser.tenantId);
       expect(resp.body.theme).toBe('https://mock-signed-url.com');
     });
   });

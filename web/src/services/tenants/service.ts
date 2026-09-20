@@ -15,12 +15,9 @@ export const Tenants = () => {
     tenantId: string,
   ): Promise<{
     tenantId: string;
-    stripeCustomerId?: string;
-    stripeSubscriptionId?: string;
-    stripeSubscriptionStatus?: string;
     tenantName: string;
+    /** A signed, short-lived url to the tenant's theme css */
     theme?: string;
-    createdAt: string;
   }> => {
     return API.get(`/tenants/${tenantId}`);
   };
@@ -37,19 +34,13 @@ export const Tenants = () => {
     return API.get(`/tenants/${tenantId}/paymentMethods/setupIntent`);
   };
 
-  const setDefaultPaymentMethod = (
-    tenantId: string,
-    paymentMethodId: string,
-  ): Promise<any> => {
+  const setDefaultPaymentMethod = (tenantId: string, paymentMethodId: string): Promise<any> => {
     return API.post(`/tenants/${tenantId}/paymentMethods/default`, {
       body: {paymentMethodId},
     });
   };
 
-  const delPaymentMethod = (
-    tenantId: string,
-    paymentMethodId: string,
-  ): Promise<undefined> => {
+  const delPaymentMethod = (tenantId: string, paymentMethodId: string): Promise<undefined> => {
     return API.del(`/tenants/${tenantId}/paymentMethods/${paymentMethodId}`);
   };
 
@@ -57,17 +48,11 @@ export const Tenants = () => {
     return API.get(`/tenants/${tenantId}/subscriptions`);
   };
 
-  const delSubscription = (
-    tenantId: string,
-    subscriptionId: string,
-  ): Promise<any> => {
+  const delSubscription = (tenantId: string, subscriptionId: string): Promise<any> => {
     return API.del(`/tenants/${tenantId}/subscriptions/${subscriptionId}`);
   };
 
-  const createSubscription = (
-    tenantId: string,
-    priceId: string,
-  ): Promise<any> => {
+  const createSubscription = (tenantId: string, priceId: string): Promise<any> => {
     return API.post(`/tenants/${tenantId}/subscriptions/`, {
       body: {priceId},
     });

@@ -1,10 +1,7 @@
 import request from 'supertest';
 import app from 'infrastructure/http';
-import faker from 'faker';
-import db from 'infrastructure/db';
-import {endConnection, truncateAllTables} from 'infrastructure/db/setup';
+import {endConnection} from 'infrastructure/db/setup';
 import fake from '../testUtils/fake';
-import {CognitoUserAttribute} from 'amazon-cognito-identity-js';
 
 const mockUser = fake.user();
 jest.mock('shared/infrastructure/http/middlewares/auth', () => ({
@@ -15,99 +12,16 @@ jest.mock('shared/infrastructure/http/middlewares/auth', () => ({
   }),
 }));
 
-jest.mock('amazon-cognito-identity-js', () => ({
-  CognitoUserAttribute: jest.fn().mockImplementation((args: any) => args),
-  CognitoUserPool: jest.fn().mockImplementation(() => ({
-    signUp: (
-      email: string,
-      _passwort: string,
-      attributes: CognitoUserAttribute[],
-      _validationData: CognitoUserAttribute[],
-      callback: (error: any, result: any) => void,
-    ) => {
-      callback(null, {
-        User: {
-          Username: email,
-          Attributes: attributes,
-        },
-      });
-    },
-  })),
-}));
-
-jest.mock('@aws-sdk/client-cognito-identity-provider', () => ({
-  CognitoIdentityServiceProvider: jest.fn().mockImplementation(() => ({
-    adminCreateUser: (parmas: {
-      UserPoolId: string;
-      Username: string;
-      UserAttributes: {Name: string; Value: string}[];
-    }) => ({
-      promise: () =>
-        Promise.resolve({
-          User: {
-            Username: parmas.Username,
-            Attributes: parmas.UserAttributes,
-          },
-        }),
-    }),
-    listUsers: () => ({
-      promise: () =>
-        Promise.resolve({
-          Users: [
-            {
-              Username: faker.internet.email(),
-              Attributes: [
-                {Name: 'email', Value: faker.internet.email()},
-                {Name: 'custom:tenant_id', Value: mockUser.tenantId},
-              ],
-            },
-          ],
-        }),
-    }),
-    adminDeleteUser: () => ({
-      promise: () => Promise.resolve({}),
-    }),
-  })),
-}));
-
-afterAll(async () => {
-  await truncateAllTables();
-  endConnection();
-});
+afterAll(() => endConnection());
 
 describe('tenants', () => {
   describe('POST /tenants', () => {
-    const params = (tenant = fake.tenant()) => ({
-      ...tenant,
-      email: faker.internet.email(),
-      password: faker.internet.password(),
-      stripePriceId: faker.random.uuid(),
-    });
-
-    it('returns 403 because self-service signup is disabled', async () => {
-      const {body} = await request(app)
+    it('no longer exists — organisations are created by hand (JO-75)', async () => {
+      await request(app)
         .post('/tenants')
         .set('Accept', 'application/json')
-        .send(params())
-        .expect('Content-Type', /json/)
-        .expect(403);
-
-      expect(body.message).toMatch(/Registrierung neuer Organisationen ist deaktiviert/);
-    });
-
-    it('returns 403 even without params (no validation runs first)', async () => {
-      await request(app).post('/tenants').send({}).set('Accept', 'application/json').expect(403);
-    });
-
-    it('does not create a tenant', async () => {
-      const tenant = fake.tenant();
-      await request(app).post('/tenants').set('Accept', 'application/json').send(params(tenant));
-
-      const {count} = await db.one(
-        'SELECT count(*) FROM tenant WHERE tenant_name=$1',
-        tenant.tenantName,
-      );
-      expect(+count).toBe(0);
+        .send({tenantName: 'x', email: 'a@b.c', password: 'p', stripePriceId: 'price'})
+        .expect(404);
     });
   });
 });

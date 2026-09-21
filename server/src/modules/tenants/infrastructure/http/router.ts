@@ -1,4 +1,3 @@
-import {BaseError} from 'application';
 import express from 'express';
 import {subsCreateRules} from './validation';
 import {
@@ -16,9 +15,6 @@ import {
   ThemesAdapter,
 } from '../../application';
 
-export const SIGNUP_DISABLED_MESSAGE =
-  'Die Registrierung neuer Organisationen ist deaktiviert. Bitte wenden Sie sich an den Administrator Ihrer Organisation oder an johannes.oster@icruiting.at.';
-
 export const TenantsRouter: RouterFactory = (dbAccess) => {
   const db = initializeRepositories(dbAccess);
 
@@ -30,10 +26,7 @@ export const TenantsRouter: RouterFactory = (dbAccess) => {
   const paymentURL = '/:tenantId/paymentMethods';
   const router = express.Router();
 
-  // Self-service signup is disabled (JO-67): organisations are onboarded by hand.
-  router.post('/', () => {
-    throw new BaseError(403, SIGNUP_DISABLED_MESSAGE);
-  });
+  // No self-service signup (JO-67/JO-75): organisations are created by hand.
 
   router.use(requireAuth);
   router.use(requireAdmin);

@@ -124,6 +124,12 @@ const config = convict({
     default: '',
     env: 'FREE_STRIPE_PRODUCT_ID',
   },
+  webBaseUrl: {
+    doc: 'Public URL of the web app, used in e-mails (invitation link)',
+    format: String,
+    default: 'https://icruiting.at',
+    env: 'WEB_BASE_URL',
+  },
   port: {
     doc: 'The port the API should listen on',
     format: 'port',

@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-lambda": "^3.1136.0",
+    "@aws-sdk/client-sesv2": "^3.1136.0",
     "@prettier/plugin-pug": "^3.0.0",
     "@types/adm-zip": "^0.5.8",
     "@types/aws-sdk": "^2.7.0",

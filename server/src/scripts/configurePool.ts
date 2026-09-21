@@ -4,7 +4,8 @@
  *   - e-mail one-time code allowed as a first factor,
  *   - app client: USER_AUTH flow on, password flows off.
  *
- * Usage (from server/):  yarn ts-node scripts/cognito/configurePool.ts <userPoolId> <clientId> [--apply] [--keep-password-flows]
+ * Usage:  dev (from server/):  npx ts-node src/scripts/configurePool.ts <userPoolId> <clientId> [--apply] [--keep-password-flows]
+ *         prod (Heroku dyno):  heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js <userPoolId> <clientId> --apply
  * --keep-password-flows: run this variant BEFORE the web deploy (adds USER_AUTH next to the old flows),
  * then the plain variant after it (drops the password flows).
  * Without --apply it only prints what would change. Credentials/region come from the environment
@@ -99,6 +100,13 @@ const pick = <T extends object>(obj: any, keys: (keyof T)[]): Partial<T> =>
       ...(pool.Policies || {}),
       // PASSWORD cannot be removed at pool level; nothing in the app offers it any more (JO-75).
       SignInPolicy: {AllowedFirstAuthFactors: ['PASSWORD', 'EMAIL_OTP']},
+    },
+    // The one-time code mail. Cognito uses the verification template for EMAIL_OTP sign-in.
+    VerificationMessageTemplate: {
+      ...(pool.VerificationMessageTemplate || {}),
+      EmailSubject: 'Dein Anmeldecode für icruiting',
+      EmailMessage:
+        '<p>Hallo,</p><p>dein Anmeldecode für icruiting lautet:</p><p style="font-size:24px;font-weight:bold;letter-spacing:2px">{####}</p><p>Der Code ist nur kurz gültig. Wenn du dich nicht anmelden wolltest, ignoriere diese E-Mail einfach.</p><p>Dein icruiting-Team</p>',
     },
   };
   const poolAfter = {

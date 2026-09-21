@@ -55,8 +55,8 @@ Zero-downtime order: prepare the pool while the old web still runs, deploy, then
 
 1. **Before the merge, on a Heroku dyno** (real prod credentials, never on the VPS):
    ```
-   heroku run -a icruiting-api -- yarn ts-node scripts/cognito/backfillEmailVerified.ts eu-central-1_WK7ijcvLY --apply
-   heroku run -a icruiting-api -- yarn ts-node scripts/cognito/configurePool.ts eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply --keep-password-flows
+   heroku run -a icruiting-api -- node dist/src/scripts/backfillEmailVerified.js eu-central-1_WK7ijcvLY --apply
+   heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply --keep-password-flows
    ```
    Backfill: every invited user gets a verified e-mail, pending invites become CONFIRMED. Pool: Essentials,
    `EMAIL_OTP` allowed, `USER_AUTH` added *next to* the old password flows, LEGACY existence errors. The
@@ -67,7 +67,7 @@ Zero-downtime order: prepare the pool while the old web still runs, deploy, then
 3. **Right after the merge:**
    ```
    cd server && yarn lambda:deploy      # icruiting-dev key in the env; shared by both pools
-   heroku run -a icruiting-api -- yarn ts-node scripts/cognito/configurePool.ts eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply
+   heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply
    ```
    From now on uninvited Google logins are rejected and the app client no longer accepts passwords.
 4. **SES for prod mail** (can precede everything; only the last step depends on it): create the sender

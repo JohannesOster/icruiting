@@ -24,7 +24,7 @@ Invite-only and passwordless since JO-75: admins invite by e-mail, people log in
 one-time code or Google. The Cognito PreSignUp trigger lives in `infra/lambda/linkProviders/` and
 rejects Google logins without an invite. `docs/auth.md` has the flow, the Cognito quirks behind it,
 the tailnet dev-server recipe and the prod rollout runbook — read it before touching login, invites,
-the Lambda or the pool config scripts in `server/scripts/cognito/`.
+the Lambda or the pool config scripts in `server/src/scripts/`.
 
 ## Hard rules
 

@@ -21,6 +21,12 @@ export function withAuth<T>(
       router.replace(redirectTo);
       return <></>;
     }
+    // Logged in but not part of any organisation (e.g. a Google login that was never invited):
+    // nothing in the dashboard would work, so explain how to get access instead. (JO-63/JO-67)
+    if (!currentUser.tenantId) {
+      router.replace('/signup');
+      return <></>;
+    }
     if (requireAdmin && currentUser.userRole !== 'admin') {
       router.replace(redirectTo);
       return <></>;
@@ -31,8 +37,5 @@ export function withAuth<T>(
 }
 
 export function withAdmin<T>(Component: FC) {
-  return hoistNonReactStatics(
-    withAuth(Component, {requireAdmin: true}),
-    Component,
-  );
+  return hoistNonReactStatics(withAuth(Component, {requireAdmin: true}), Component);
 }

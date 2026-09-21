@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from 'infrastructure/http';
 import faker from 'faker';
+import db from 'infrastructure/db';
 import {endConnection, truncateAllTables} from 'infrastructure/db/setup';
 import fake from '../testUtils/fake';
 import {CognitoUserAttribute} from 'amazon-cognito-identity-js';
@@ -82,29 +83,31 @@ describe('tenants', () => {
       password: faker.internet.password(),
       stripePriceId: faker.random.uuid(),
     });
-    it('returns 201 json response', async () => {
-      await request(app)
+
+    it('returns 403 because self-service signup is disabled', async () => {
+      const {body} = await request(app)
         .post('/tenants')
         .set('Accept', 'application/json')
         .send(params())
         .expect('Content-Type', /json/)
-        .expect(201);
+        .expect(403);
+
+      expect(body.message).toMatch(/Registrierung neuer Organisationen ist deaktiviert/);
     });
 
-    it('returns 422 on missing params', async () => {
-      await request(app).post('/tenants').send({}).set('Accept', 'application/json').expect(422);
+    it('returns 403 even without params (no validation runs first)', async () => {
+      await request(app).post('/tenants').send({}).set('Accept', 'application/json').expect(403);
     });
 
-    it('returns inserted tenant entity', async () => {
+    it('does not create a tenant', async () => {
       const tenant = fake.tenant();
-      const {body} = await request(app)
-        .post('/tenants')
-        .set('Accept', 'application/json')
-        .send(params(tenant))
-        .expect(201);
+      await request(app).post('/tenants').set('Accept', 'application/json').send(params(tenant));
 
-      expect(body.tenant.tenantName).toBe(tenant.tenantName);
-      expect(!!body.tenant.tenantId).toBe(true);
+      const {count} = await db.one(
+        'SELECT count(*) FROM tenant WHERE tenant_name=$1',
+        tenant.tenantName,
+      );
+      expect(+count).toBe(0);
     });
   });
 });

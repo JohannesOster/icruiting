@@ -79,7 +79,7 @@ const LandingPage: React.FC = () => {
               </Typography>
             </Box>
             <Box>
-              <Button onClick={() => router.push('/signup')}>Registrieren</Button>
+              <Button onClick={() => router.push('/login')}>Anmelden</Button>
             </Box>
           </Hero>
         </Box>

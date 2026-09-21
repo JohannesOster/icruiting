@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Spinner} from 'components';
-import {useAuth} from 'context';
+import {useAuth, useToaster} from 'context';
 import {useRouter} from 'next/router';
 import {
   CognitoAccessToken,
@@ -14,6 +14,7 @@ import config from 'config';
 
 const Login: React.FC = () => {
   const {refetchUser, currentUser} = useAuth();
+  const toaster = useToaster();
   const router = useRouter();
   const {code, error, error_description} = router.query;
 
@@ -80,7 +81,12 @@ const Login: React.FC = () => {
     if (!error_description) return;
     // filter error already exists entry after linking providers
     // https://stackoverflow.com/questions/47815161/cognito-auth-flow-fails-with-already-found-an-entry-for-username-facebook-10155
-    if (!error_description.toString().startsWith('Already')) return;
+    if (!error_description.toString().startsWith('Already')) {
+      // e.g. the Cognito pre-signup trigger refusing a Google login that was never invited
+      toaster.danger(error_description.toString());
+      router.replace('/login');
+      return;
+    }
     console.error(error_description);
     console.info('Repeat login');
     const url = `${config.userPoolDomain}/oauth2/authorize?identity_provider=Google&response_type=code&client_id=${config.userPoolWebClientId}&${config.loginCallbackUrl}`;

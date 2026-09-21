@@ -24,6 +24,9 @@ export interface InputProps {
   description?: string;
   required?: boolean;
   errors?: string[];
+  /** Standard HTML input attributes passed through to the element */
+  autoComplete?: string;
+  inputMode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url';
   value?: string;
   defaultValue?: string;
   disabled?: boolean;

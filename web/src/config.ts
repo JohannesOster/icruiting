@@ -25,4 +25,16 @@ const config = {
 };
 
 const env = process.env.NEXT_PUBLIC_APP_ENV || 'development';
-export default config[env];
+const selected = config[env];
+
+// Optional overrides so a dev server can be reached from another host, e.g. over the tailnet (JO-69):
+//   NEXT_PUBLIC_API_URL=https://agent-vps.tailf4690b.ts.net:10000 NEXT_PUBLIC_WEB_URL=https://agent-vps.tailf4690b.ts.net
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+const webUrl = process.env.NEXT_PUBLIC_WEB_URL;
+
+export default {
+  ...selected,
+  endpoint: {...selected.endpoint, url: apiUrl || selected.endpoint.url},
+  loginCallbackUrl: webUrl ? `${webUrl}/login/callback/` : selected.loginCallbackUrl,
+  logoutCallbackUrl: webUrl ? `${webUrl}/logout/` : selected.logoutCallbackUrl,
+};

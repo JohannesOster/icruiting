@@ -2,15 +2,8 @@ import React, {useEffect, useState} from 'react';
 import {Spinner} from 'components';
 import {useAuth, useToaster} from 'context';
 import {useRouter} from 'next/router';
-import {
-  CognitoAccessToken,
-  CognitoIdToken,
-  CognitoRefreshToken,
-  CognitoUser,
-  CognitoUserPool,
-  CognitoUserSession,
-} from 'amazon-cognito-identity-js';
 import config from 'config';
+import {storeSession} from 'services/auth/service';
 
 const Login: React.FC = () => {
   const {refetchUser, currentUser} = useAuth();
@@ -49,32 +42,7 @@ const Login: React.FC = () => {
         }
         return json;
       })
-      .then(({id_token, access_token, refresh_token}) => {
-        const userPool = new CognitoUserPool({
-          UserPoolId: config.userPoolId,
-          ClientId: config.userPoolWebClientId,
-        });
-
-        const cognitoIdToken = new CognitoIdToken({
-          IdToken: id_token,
-        });
-        const cognitoAccessToken = new CognitoAccessToken({
-          AccessToken: access_token,
-        });
-        const cognitoRefreshToken = new CognitoRefreshToken({
-          RefreshToken: refresh_token,
-        });
-
-        const username = cognitoIdToken.payload.sub;
-        const user = new CognitoUser({Pool: userPool, Username: username});
-        user.setSignInUserSession(
-          new CognitoUserSession({
-            AccessToken: cognitoAccessToken,
-            IdToken: cognitoIdToken,
-            RefreshToken: cognitoRefreshToken,
-          }),
-        );
-      })
+      .then(storeSession)
       .then(() => {
         refetchUser();
       })
@@ -96,8 +64,13 @@ const Login: React.FC = () => {
     // filter error already exists entry after linking providers
     // https://stackoverflow.com/questions/47815161/cognito-auth-flow-fails-with-already-found-an-entry-for-username-facebook-10155
     if (!error_description.toString().startsWith('Already')) {
-      // e.g. the Cognito pre-signup trigger refusing a Google login that was never invited
-      toaster.danger(error_description.toString());
+      // The PreSignUp trigger (infra/lambda/linkProviders) refusing a Google login that was never
+      // invited. Cognito wraps its message: "PreSignUp failed with error <message>."
+      const message = error_description
+        .toString()
+        .replace(/^PreSignUp failed with error /, '')
+        .replace(/\.\s*$/, '');
+      toaster.danger(message);
       router.replace('/login');
       return;
     }

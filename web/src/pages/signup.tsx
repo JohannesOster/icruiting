@@ -1,19 +1,13 @@
 import React from 'react';
 import Link from 'next/link';
 import {Box, HeadingS, Typography} from 'components';
-import {useAuth} from 'context';
 import {useTheme} from 'styled-components';
 
 export const CONTACT_EMAIL = 'johannes.oster@icruiting.at';
 
-/**
- * Self-service signup is disabled (JO-67). This page tells people how to get access instead,
- * and is also where users without an organisation (e.g. a Google login that was never invited)
- * are sent by `withAuth`.
- */
+/** Self-service signup is disabled (JO-67). This page tells people how to get access instead. */
 const SignUp: React.FC = () => {
   const {spacing} = useTheme();
-  const {currentUser} = useAuth();
 
   return (
     <Box margin="0 auto" padding="132px 0" maxWidth="600px">
@@ -31,12 +25,6 @@ const SignUp: React.FC = () => {
           <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> oder über{' '}
           <Link href="/#contact">Kontakt</Link>.
         </Typography>
-        {currentUser && !currentUser.tenantId && (
-          <Typography kind="secondary">
-            Der Account <b>{currentUser.email}</b> ist noch keiner Organisation zugeordnet.{' '}
-            <Link href="/logout">Abmelden</Link>
-          </Typography>
-        )}
       </Box>
     </Box>
   );

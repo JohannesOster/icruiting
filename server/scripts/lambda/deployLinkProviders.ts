@@ -31,6 +31,11 @@ const dir = join(__dirname, '..', '..', '..', 'infra', 'lambda', 'linkProviders'
 
   const lambda = new LambdaClient({region: 'eu-central-1'});
   const cfg = await lambda.send(new GetFunctionConfigurationCommand({FunctionName}));
+  // Snapshot what is live before touching it: rollback = point the pools' LambdaConfig at this version.
+  const before = await lambda.send(
+    new PublishVersionCommand({FunctionName, Description: 'pre-deploy snapshot'}),
+  );
+  console.log(`snapshot of the live code published as version ${before.Version}`);
   console.log(
     `current: runtime=${cfg.Runtime} handler=${cfg.Handler} modified=${cfg.LastModified}`,
   );

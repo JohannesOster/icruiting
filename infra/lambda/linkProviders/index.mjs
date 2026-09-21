@@ -1,11 +1,14 @@
-// Cognito PreSignUp trigger `linkProviders` (shared by the dev and prod user pools).
+// Cognito trigger `linkProviders` (shared by the dev and prod user pools). Serves two triggers:
 //
-// Sign-up in icruiting is invite-only. When someone signs in with Google, Cognito calls this
+// 1. PreSignUp — sign-up in icruiting is invite-only. When someone signs in with Google, Cognito calls this
 // trigger before it would create a federated user:
 //   - an invited (native) user with the same e-mail exists → link the Google identity to it, so the
 //     login ends up in the invited account with its tenant and role;
 //   - no such user → throw. Cognito aborts the sign-up, creates nothing, and sends the browser back
 //     to the login callback with the message below as `error_description`.
+//
+// 2. CustomMessage — the e-mail one-time code for sign-in (Cognito's default is English "Your
+//    authentication code"; the verification-message template is not used for sign-in codes).
 //
 // Runtime: nodejs22.x (AWS SDK v3 is provided by the runtime, no bundling needed).
 // Deploy: `yarn lambda:deploy` in server/ (see scripts/lambda/deployLinkProviders.ts).
@@ -36,7 +39,25 @@ export const findInvitedUser = (users = []) =>
 
 const permanentPassword = () => randomBytes(24).toString('base64url') + 'aA1!';
 
+/** German one-time code mail for the passwordless sign-in (JO-75). `{####}` is replaced by Cognito. */
+export const codeMessage = () => ({
+  emailSubject: 'Dein Anmeldecode für icruiting',
+  emailMessage:
+    '<p>Hallo,</p><p>dein Anmeldecode für icruiting lautet:</p>' +
+    '<p style="font-size:24px;font-weight:bold;letter-spacing:2px">{####}</p>' +
+    '<p>Der Code ist nur kurz gültig. Wenn du dich nicht anmelden wolltest, ignoriere diese E-Mail einfach.</p>' +
+    '<p>Dein icruiting-Team</p>',
+});
+
 export const makeHandler = (client) => async (event) => {
+  if (event.triggerSource?.startsWith('CustomMessage_')) {
+    // Sign-in code (choice-based EMAIL_OTP arrives as CustomMessage_Authentication). Other custom
+    // messages (attribute verification, forgot password) are not reachable in the product any more.
+    if (event.triggerSource === 'CustomMessage_Authentication') {
+      event.response = {...(event.response || {}), ...codeMessage()};
+    }
+    return event;
+  }
   if (!event.triggerSource?.includes('ExternalProvider')) return event;
   const email = event.request?.userAttributes?.email;
   if (!email) throw new Error(NOT_INVITED_MESSAGE);

@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {makeHandler, NOT_INVITED_MESSAGE, parseFederatedUsername, findInvitedUser} from './index.mjs';
+import {makeHandler, NOT_INVITED_MESSAGE, parseFederatedUsername, findInvitedUser, codeMessage} from './index.mjs';
 
 const event = (over = {}) => ({
   triggerSource: 'PreSignUp_ExternalProvider',
@@ -68,6 +68,22 @@ test('a failing email_verified update does not block the link', async () => {
   };
   await makeHandler(c)(event());
   assert.deepEqual(c.calls, ['ListUsersCommand', 'AdminUpdateUserAttributesCommand', 'AdminLinkProviderForUserCommand']);
+});
+
+test('CustomMessage_Authentication gets the German code mail', async () => {
+  const c = fakeClient([]);
+  const e = {triggerSource: 'CustomMessage_Authentication', request: {codeParameter: '{####}'}, response: {}};
+  const out = await makeHandler(c)(e);
+  assert.equal(out.response.emailSubject, codeMessage().emailSubject);
+  assert.ok(out.response.emailMessage.includes('{####}'));
+  assert.deepEqual(c.calls, []);
+});
+
+test('other CustomMessage triggers pass through untouched', async () => {
+  const c = fakeClient([]);
+  const e = {triggerSource: 'CustomMessage_ForgotPassword', request: {}, response: {}};
+  const out = await makeHandler(c)(e);
+  assert.deepEqual(out.response, {});
 });
 
 test('parses federated usernames', () => {

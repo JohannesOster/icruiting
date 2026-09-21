@@ -96,6 +96,11 @@ const pick = <T extends object>(obj: any, keys: (keyof T)[]): Partial<T> =>
     UserPoolId: userPoolId,
     ...pick<UpdateUserPoolCommandInput>(pool, POOL_MUTABLE),
     UserPoolTier: 'ESSENTIALS',
+    // The same function serves PreSignUp (link/reject Google logins) and CustomMessage (German code mail).
+    LambdaConfig: {
+      ...(pool.LambdaConfig || {}),
+      CustomMessage: pool.LambdaConfig?.PreSignUp,
+    },
     Policies: {
       ...(pool.Policies || {}),
       // PASSWORD cannot be removed at pool level; nothing in the app offers it any more (JO-75).
@@ -108,13 +113,6 @@ const pick = <T extends object>(obj: any, keys: (keyof T)[]): Partial<T> =>
       SourceArn: 'arn:aws:ses:eu-central-1:278924352912:identity/icruiting.at',
       From: 'icruiting <no-reply@icruiting.at>',
       ReplyToEmailAddress: 'johannes.oster@icruiting.at',
-    },
-    // The one-time code mail. Cognito uses the verification template for EMAIL_OTP sign-in.
-    VerificationMessageTemplate: {
-      ...(pool.VerificationMessageTemplate || {}),
-      EmailSubject: 'Dein Anmeldecode für icruiting',
-      EmailMessage:
-        '<p>Hallo,</p><p>dein Anmeldecode für icruiting lautet:</p><p style="font-size:24px;font-weight:bold;letter-spacing:2px">{####}</p><p>Der Code ist nur kurz gültig. Wenn du dich nicht anmelden wolltest, ignoriere diese E-Mail einfach.</p><p>Dein icruiting-Team</p>',
     },
   };
   const poolAfter = {

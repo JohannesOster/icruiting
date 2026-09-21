@@ -29,6 +29,7 @@ Google if the invited address is a Google account.
 - **Why a Lambda at all**: Cognito cannot link a social identity to an existing user by itself. Before
   JO-75 the Lambda only linked and let everything else through, which created ~90 orphan Google users
   over the years (JO-63).
+- **The sign-in code mail can only be customised through the CustomMessage trigger** (`CustomMessage_Authentication`); the pool's verification-message template does not apply to it.
 - **Cognito's own e-mail sender is capped at 50 mails/day per pool.** Enough for dev, not for a
   cohort onboarding + login codes in prod → prod must send via SES (see rollout).
 

@@ -4,7 +4,9 @@
  *   - e-mail one-time code allowed as a first factor,
  *   - app client: USER_AUTH flow on, password flows off.
  *
- * Usage (from server/):  yarn ts-node scripts/cognito/configurePool.ts <userPoolId> <clientId> [--apply]
+ * Usage (from server/):  yarn ts-node scripts/cognito/configurePool.ts <userPoolId> <clientId> [--apply] [--keep-password-flows]
+ * --keep-password-flows: run this variant BEFORE the web deploy (adds USER_AUTH next to the old flows),
+ * then the plain variant after it (drops the password flows).
  * Without --apply it only prints what would change. Credentials/region come from the environment
  * (AWS_REGION, AWS_ACCESS_KEY_ID, …) — for prod run it on a Heroku dyno.
  *
@@ -18,12 +20,16 @@ import {
   ExplicitAuthFlowsType,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-const [userPoolId, clientId, flag] = process.argv.slice(2);
+const [userPoolId, clientId, ...flags] = process.argv.slice(2);
 if (!userPoolId || !clientId) {
-  console.error('usage: configurePool.ts <userPoolId> <clientId> [--apply]');
+  console.error(
+    'usage: configurePool.ts <userPoolId> <clientId> [--apply] [--keep-password-flows]',
+  );
   process.exit(1);
 }
-const apply = flag === '--apply';
+const apply = flags.includes('--apply');
+// Pre-merge step: enable the new flow next to the old ones so the currently deployed web keeps working.
+const keepPasswordFlows = flags.includes('--keep-password-flows');
 
 const POOL_MUTABLE: (keyof UpdateUserPoolCommandInput)[] = [
   'Policies',
@@ -100,7 +106,15 @@ const pick = <T extends object>(obj: any, keys: (keyof T)[]): Partial<T> =>
     firstFactors: poolInput.Policies!.SignInPolicy!.AllowedFirstAuthFactors,
   };
 
-  const wantedFlows: ExplicitAuthFlowsType[] = ['ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'];
+  const wantedFlows: ExplicitAuthFlowsType[] = keepPasswordFlows
+    ? (Array.from(
+        new Set([
+          ...(client.ExplicitAuthFlows || []),
+          'ALLOW_USER_AUTH',
+          'ALLOW_REFRESH_TOKEN_AUTH',
+        ]),
+      ) as ExplicitAuthFlowsType[])
+    : ['ALLOW_USER_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'];
   const clientInput: UpdateUserPoolClientCommandInput = {
     UserPoolId: userPoolId,
     ClientId: clientId,

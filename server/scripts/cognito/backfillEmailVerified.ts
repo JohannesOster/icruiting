@@ -7,6 +7,7 @@
  * Prints counts only (no e-mail addresses). For prod run it on a Heroku dyno.
  */
 import {CognitoIdentityProvider, UserType} from '@aws-sdk/client-cognito-identity-provider';
+import {randomBytes} from 'crypto';
 
 const [userPoolId, flag] = process.argv.slice(2);
 if (!userPoolId) {

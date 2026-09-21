@@ -38,7 +38,17 @@ const Login: React.FC = () => {
     body.append('redirect_uri', config.loginCallbackUrl);
 
     fetch(url, {method: 'POST', headers, body, redirect: 'follow'})
-      .then((response) => response.json())
+      .then(async (response) => {
+        const json = await response.json();
+        // Cognito answers 400 {error: 'invalid_grant'} for a reused/expired code — surface it
+        // instead of spinning forever (JO-67 QA)
+        if (!response.ok || !json.id_token) {
+          throw new Error(
+            json.error_description || json.error || `Token exchange failed (${response.status})`,
+          );
+        }
+        return json;
+      })
       .then(({id_token, access_token, refresh_token}) => {
         const userPool = new CognitoUserPool({
           UserPoolId: config.userPoolId,
@@ -68,7 +78,11 @@ const Login: React.FC = () => {
       .then(() => {
         refetchUser();
       })
-      .catch((error) => console.log('error', error));
+      .catch((error) => {
+        console.error('login callback', error);
+        toaster.danger(`Anmeldung fehlgeschlagen: ${error.message}`);
+        router.replace('/login');
+      });
   };
 
   useEffect(() => {

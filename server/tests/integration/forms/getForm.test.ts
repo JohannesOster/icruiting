@@ -52,6 +52,17 @@ describe('forms', () => {
       expect(resp.body).toStrictEqual(formsMapper.toDTO(form));
     });
 
+    it('returns a form without formFields as an empty array (JO-76)', async () => {
+      const fieldless = await dataGenerator.insertFieldlessForm(mockUser.tenantId, jobId);
+
+      const resp = await request(app)
+        .get(`/forms/${fieldless.id}`)
+        .set('Accept', 'application/json')
+        .expect(200);
+
+      expect(resp.body.formFields).toStrictEqual([]);
+    });
+
     it('returns 404 if form does not exist', async () => {
       await request(app)
         .get(`/forms/${random.uuid()}`)
@@ -61,31 +72,17 @@ describe('forms', () => {
 
     it('isolates tenant', async () => {
       const {id: tenantId} = await dataGenerator.insertTenant(random.uuid());
-      const form = await dataGenerator.insertForm(
-        tenantId,
-        jobId,
-        'application',
-      );
+      const form = await dataGenerator.insertForm(tenantId, jobId, 'application');
 
-      await request(app)
-        .get(`/forms/${form.id}`)
-        .set('Accept', 'application/json')
-        .expect(404);
+      await request(app).get(`/forms/${form.id}`).set('Accept', 'application/json').expect(404);
     });
 
     it('retrieves replica with formFields of primary form', async () => {
-      const primary = await dataGenerator.insertForm(
-        mockUser.tenantId,
-        jobId,
-        'onboarding',
-      );
+      const primary = await dataGenerator.insertForm(mockUser.tenantId, jobId, 'onboarding');
 
-      const replica = await dataGenerator.insertForm(
-        mockUser.tenantId,
-        jobId,
-        'onboarding',
-        {replicaOf: primary.id},
-      );
+      const replica = await dataGenerator.insertForm(mockUser.tenantId, jobId, 'onboarding', {
+        replicaOf: primary.id,
+      });
 
       const resp = await request(app)
         .get(`/forms/${replica.id}`)

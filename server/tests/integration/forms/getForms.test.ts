@@ -47,34 +47,36 @@ describe('forms', () => {
       ];
       await Promise.all(promises);
 
-      const resp = await request(app)
-        .get('/forms')
-        .set('Accept', 'application/json')
-        .expect(200);
+      const resp = await request(app).get('/forms').set('Accept', 'application/json').expect(200);
 
       expect(Array.isArray(resp.body)).toBeTruthy();
       expect(resp.body.length).toBe(promises.length);
       expect(resp.body[0].formId).toBeDefined();
     });
 
-    it('retrieves replica with formFields of primary form', async () => {
-      const primary = await dataGenerator.insertForm(
-        mockUser.tenantId,
-        jobId,
-        'onboarding',
-      );
-
-      const replica = await dataGenerator.insertForm(
-        mockUser.tenantId,
-        jobId,
-        'onboarding',
-        {replicaOf: primary.id},
-      );
+    it('returns a form without formFields as an empty array (JO-76)', async () => {
+      const {tenantId} = mockUser;
+      await dataGenerator.insertForm(tenantId, jobId, 'screening');
+      const fieldless = await dataGenerator.insertFieldlessForm(tenantId, jobId);
 
       const resp = await request(app)
-        .get(`/forms`)
+        .get(`/forms?jobId=${jobId}`)
         .set('Accept', 'application/json')
         .expect(200);
+
+      expect(resp.body.length).toBe(2);
+      const form = resp.body.find((f: any) => f.formId === fieldless.id);
+      expect(form.formFields).toStrictEqual([]);
+    });
+
+    it('retrieves replica with formFields of primary form', async () => {
+      const primary = await dataGenerator.insertForm(mockUser.tenantId, jobId, 'onboarding');
+
+      const replica = await dataGenerator.insertForm(mockUser.tenantId, jobId, 'onboarding', {
+        replicaOf: primary.id,
+      });
+
+      const resp = await request(app).get(`/forms`).set('Accept', 'application/json').expect(200);
 
       expect(Array.isArray(resp.body)).toBeTruthy();
       expect(resp.body.length).toBe(2);
@@ -83,9 +85,7 @@ describe('forms', () => {
         const formId = form.formId === primary.id ? primary.id : replica.id;
 
         expect(form.formFields.sort()).toStrictEqual(
-          primary.formFields
-            .sort()
-            .map((field) => formFieldsMapper.toDTO({formId}, field)),
+          primary.formFields.sort().map((field) => formFieldsMapper.toDTO({formId}, field)),
         );
       });
     });

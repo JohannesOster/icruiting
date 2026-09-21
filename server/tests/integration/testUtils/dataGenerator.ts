@@ -6,10 +6,11 @@ import {FormsRepository} from 'modules/forms/infrastructure/db/repositories';
 import {FormSubmissionsRepository} from 'modules/formSubmissions/infrastructure/repositories/formSubmissions';
 import {TenantsRepository} from 'modules/tenants/infrastructure/repositories/tenantsRepository';
 import {ApplicantsRepository} from 'modules/applicants/infrastructure/repositories/applicantsRepository';
-import {FormCategory} from 'modules/forms/domain';
+import {FormCategory, createForm} from 'modules/forms/domain';
 import {Form} from 'modules/forms/infrastructure/db/repositories/forms';
 import {JobRequirement, createJob} from 'modules/jobs/domain';
 import jobsMapper from 'modules/jobs/mappers/jobsMapper';
+import {formsMapper} from 'modules/forms/mappers';
 
 const tenantsRepo = TenantsRepository({db, pgp});
 const jobsRepo = JobsRepository({db, pgp});
@@ -53,6 +54,17 @@ const dataGenerator = {
     }
 
     return formsRepo.create(form);
+  },
+  /** A form with no formFields — legal via POST /forms and by deleting the last field via PUT */
+  insertFieldlessForm: (tenantId: string, jobId: string) => {
+    const form = createForm({
+      tenantId,
+      jobId,
+      formCategory: 'assessment',
+      formTitle: random.words(),
+      formFields: [],
+    });
+    return formsRepo.create(formsMapper.toPersistance(form));
   },
   insertApplicant: (tenantId: string, jobId: string, formFieldIds: string[]) => {
     const applicant = fake.applicant(tenantId, jobId, formFieldIds);

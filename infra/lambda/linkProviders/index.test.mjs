@@ -56,6 +56,20 @@ test('confirms and verifies a pending invite before linking', async () => {
   ]);
 });
 
+test('a failing email_verified update does not block the link', async () => {
+  const c = fakeClient([{Username: 'u-3', UserStatus: 'CONFIRMED', Attributes: []}]);
+  const send = c.send;
+  c.send = async (cmd) => {
+    if (cmd.constructor.name === 'AdminUpdateUserAttributesCommand') {
+      c.calls.push(cmd.constructor.name);
+      throw Object.assign(new Error('not allowed'), {name: 'AccessDeniedException'});
+    }
+    return send(cmd);
+  };
+  await makeHandler(c)(event());
+  assert.deepEqual(c.calls, ['ListUsersCommand', 'AdminUpdateUserAttributesCommand', 'AdminLinkProviderForUserCommand']);
+});
+
 test('parses federated usernames', () => {
   assert.deepEqual(parseFederatedUsername('google_123_456'), {providerName: 'Google', providerUserId: '123_456'});
   assert.throws(() => parseFederatedUsername('nounderscore'));

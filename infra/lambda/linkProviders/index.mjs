@@ -63,9 +63,16 @@ export const makeHandler = (client) => async (event) => {
   }
   const verified = invited.Attributes?.find((a) => a.Name === 'email_verified')?.Value === 'true';
   if (!verified) {
-    await client.send(
-      new AdminUpdateUserAttributesCommand({...base, UserAttributes: [{Name: 'email_verified', Value: 'true'}]}),
-    );
+    // Best effort: Cognito also verifies the e-mail while completing the federated login, and the
+    // backfill (server/src/scripts/backfillEmailVerified.ts) has done it for everyone invited before.
+    // The function's execution role predates this call, so do not let a missing permission block login.
+    try {
+      await client.send(
+        new AdminUpdateUserAttributesCommand({...base, UserAttributes: [{Name: 'email_verified', Value: 'true'}]}),
+      );
+    } catch (error) {
+      console.log(`linkProviders: could not set email_verified for ${invited.Username}: ${error.name}`);
+    }
   }
 
   await client.send(

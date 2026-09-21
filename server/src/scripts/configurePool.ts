@@ -5,7 +5,7 @@
  *   - app client: USER_AUTH flow on, password flows off.
  *
  * Usage:  dev (from server/):  npx ts-node src/scripts/configurePool.ts <userPoolId> <clientId> [--apply] [--keep-password-flows]
- *         prod (Heroku dyno):  heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js <userPoolId> <clientId> --apply
+ *         prod (Heroku dyno):  heroku run -a icruiting-api -- node dist/scripts/configurePool.js <userPoolId> <clientId> --apply
  * --keep-password-flows: run this variant BEFORE the web deploy (adds USER_AUTH next to the old flows),
  * then the plain variant after it (drops the password flows).
  * Without --apply it only prints what would change. Credentials/region come from the environment

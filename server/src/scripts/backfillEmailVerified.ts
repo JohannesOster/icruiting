@@ -6,7 +6,7 @@
  *     permanent password, like new invites.
  *
  * Usage:  dev (from server/):  npx ts-node src/scripts/backfillEmailVerified.ts <userPoolId> [--apply]
- *         prod (Heroku dyno):  heroku run -a icruiting-api -- node dist/src/scripts/backfillEmailVerified.js <userPoolId> --apply
+ *         prod (Heroku dyno):  heroku run -a icruiting-api -- node dist/scripts/backfillEmailVerified.js <userPoolId> --apply
  * Prints counts only (no e-mail addresses). For prod run it on a Heroku dyno.
  */
 import {CognitoIdentityProvider, UserType} from '@aws-sdk/client-cognito-identity-provider';

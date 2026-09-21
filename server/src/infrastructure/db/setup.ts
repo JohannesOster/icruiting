@@ -8,10 +8,12 @@ export const createAll = async () => dbMigrate('update');
  * (e.g. a sourced .env.development) override .env.test — which once emptied icruiting_dev.
  */
 export const dropAll = async () => {
-  const url = config.get('database.url') as string;
-  if (!/test/i.test(url.split('/').pop() || '')) {
+  const names = [config.get('db.url'), config.get('liquibase.url')].map(
+    (url) => (url || '').split('/').pop() || '',
+  );
+  if (!names.every((name) => /test/i.test(name))) {
     throw new Error(
-      `Refusing drop-all: database name in DATABASE_URL does not contain "test" (${url.replace(/:[^:@/]+@/, ':***@')})`,
+      `Refusing drop-all: database names must contain "test" (got ${names.join(', ')})`,
     );
   }
   return dbMigrate('drop-all');

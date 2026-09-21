@@ -101,6 +101,14 @@ const pick = <T extends object>(obj: any, keys: (keyof T)[]): Partial<T> =>
       // PASSWORD cannot be removed at pool level; nothing in the app offers it any more (JO-75).
       SignInPolicy: {AllowedFirstAuthFactors: ['PASSWORD', 'EMAIL_OTP']},
     },
+    // Mail goes out through SES (identity + policy from scripts/ses/setupSenderIdentity.ts) — Cognito's
+    // own sender is capped at 50 mails/day.
+    EmailConfiguration: {
+      EmailSendingAccount: 'DEVELOPER',
+      SourceArn: 'arn:aws:ses:eu-central-1:278924352912:identity/icruiting.at',
+      From: 'icruiting <no-reply@icruiting.at>',
+      ReplyToEmailAddress: 'johannes.oster@icruiting.at',
+    },
     // The one-time code mail. Cognito uses the verification template for EMAIL_OTP sign-in.
     VerificationMessageTemplate: {
       ...(pool.VerificationMessageTemplate || {}),

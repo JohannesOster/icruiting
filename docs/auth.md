@@ -6,14 +6,14 @@ Google if the invited address is a Google account.
 
 ## The pieces
 
-| Piece | Where | Role |
-|---|---|---|
-| Cognito user pools | dev `eu-central-1_MeIKYtqcU`, prod `eu-central-1_WK7ijcvLY` | Users, tokens. Essentials plan, `EMAIL_OTP` allowed as first factor, app client with `USER_AUTH` only, `PreventUserExistenceErrors=LEGACY`. |
-| `linkProviders` Lambda | `infra/lambda/linkProviders/` (one function, both pools) | PreSignUp trigger. Google login → link to the invited user with that e-mail, or throw "Du wurdest noch nicht eingeladen…" so Cognito creates nothing. |
-| Invite | `server/…/authService.createUser`, `membersAdapter.create` | `adminCreateUser` with `email_verified=true`, no Cognito mail, random permanent password → user is CONFIRMED. Our own invitation mail (`member-invitation-email.pug`) via SMTP. |
-| Login page | `web/src/pages/login/index.tsx`, `services/auth/service.ts` | `InitiateAuth(USER_AUTH, PREFERRED_CHALLENGE=EMAIL_OTP)` → `RespondToAuthChallenge(EMAIL_OTP)` with `@aws-sdk/client-cognito-identity-provider`; tokens go into Amplify's session store (`storeSession`), same as the Google callback. |
-| Google callback | `web/src/pages/login/callback.tsx` | Code → tokens. Shows the Lambda's message as a toast; repeats the login once on Cognito's "Already found an entry" after a fresh link. |
-| Guards | `requireAuth` (403 without `custom:tenant_id`), `withAuth` (→ `/not-invited`) | A token that belongs to no organisation gets nowhere. |
+| Piece                  | Where                                                                         | Role                                                                                                                                                                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cognito user pools     | dev `eu-central-1_MeIKYtqcU`, prod `eu-central-1_WK7ijcvLY`                   | Users, tokens. Essentials plan, `EMAIL_OTP` allowed as first factor, app client with `USER_AUTH` only, `PreventUserExistenceErrors=LEGACY`.                                                                                            |
+| `linkProviders` Lambda | `infra/lambda/linkProviders/` (one function, both pools)                      | PreSignUp trigger. Google login → link to the invited user with that e-mail, or throw "Du wurdest noch nicht eingeladen…" so Cognito creates nothing.                                                                                  |
+| Invite                 | `server/…/authService.createUser`, `membersAdapter.create`                    | `adminCreateUser` with `email_verified=true`, no Cognito mail, random permanent password → user is CONFIRMED. Our own invitation mail (`member-invitation-email.pug`) via SMTP.                                                        |
+| Login page             | `web/src/pages/login/index.tsx`, `services/auth/service.ts`                   | `InitiateAuth(USER_AUTH, PREFERRED_CHALLENGE=EMAIL_OTP)` → `RespondToAuthChallenge(EMAIL_OTP)` with `@aws-sdk/client-cognito-identity-provider`; tokens go into Amplify's session store (`storeSession`), same as the Google callback. |
+| Google callback        | `web/src/pages/login/callback.tsx`                                            | Code → tokens. Shows the Lambda's message as a toast; repeats the login once on Cognito's "Already found an entry" after a fresh link.                                                                                                 |
+| Guards                 | `requireAuth` (403 without `custom:tenant_id`), `withAuth` (→ `/not-invited`) | A token that belongs to no organisation gets nowhere.                                                                                                                                                                                  |
 
 ## Why the details are the way they are
 
@@ -59,7 +59,7 @@ Zero-downtime order: prepare the pool while the old web still runs, deploy, then
    heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply --keep-password-flows
    ```
    Backfill: every invited user gets a verified e-mail, pending invites become CONFIRMED. Pool: Essentials,
-   `EMAIL_OTP` allowed, `USER_AUTH` added *next to* the old password flows, LEGACY existence errors. The
+   `EMAIL_OTP` allowed, `USER_AUTH` added _next to_ the old password flows, LEGACY existence errors. The
    deployed (old) web keeps working; nothing changes for users yet. Both scripts print a dry run without
    `--apply` — keep that output, it is the rollback reference.
 2. **Merge the PR.** Netlify builds the web (login = e-mail code / Google), the Heroku workflow deploys the
@@ -70,10 +70,10 @@ Zero-downtime order: prepare the pool while the old web still runs, deploy, then
    heroku run -a icruiting-api -- node dist/src/scripts/configurePool.js eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply
    ```
    From now on uninvited Google logins are rejected and the app client no longer accepts passwords.
-4. **SES for prod mail** (can precede everything; only the last step depends on it): create the sender
-   identity for `icruiting.at` (SESv2 `CreateEmailIdentity`), add the three DKIM CNAMEs at GoDaddy, leave
-   the SES sandbox (console → request production access), then set the prod pool's `EmailConfiguration`
-   to `DEVELOPER` with that identity's ARN. Until then Cognito's own sender applies: 50 mails/day/pool.
+4. **SES** is set up (identity `icruiting.at` verified, DKIM at GoDaddy, production access granted,
+   identity policy for both pools — `scripts/ses/setupSenderIdentity.ts` is idempotent if it ever needs
+   re-running). The pool script points `EmailConfiguration` at it, so step 1 already moves prod mail to
+   SES: sender `icruiting <no-reply@icruiting.at>`, replies to johannes.oster@icruiting.at.
 
 Rollback: the previous Lambda source is in `infra/lambda/linkProviders/original/`; pool and client
 settings before the change are printed by the scripts' dry runs — keep that output.

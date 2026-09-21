@@ -12,7 +12,10 @@ git -C "$root" worktree add -b "$branch" "$dest" "$base"
 for pkg in server web; do
   for f in "$root/$pkg"/.env.* ; do
     [ -e "$f" ] || continue
-    ln -sfn "$f" "$dest/$pkg/$(basename "$f")"
+    rel="$pkg/$(basename "$f")"
+    # tracked files (.env.example) are already in the worktree; only link the git-ignored local ones
+    git -C "$root" ls-files --error-unmatch "$rel" >/dev/null 2>&1 && continue
+    ln -sfn "$f" "$dest/$rel"
   done
   [ -d "$root/$pkg/node_modules" ] && ln -sfn "$root/$pkg/node_modules" "$dest/$pkg/node_modules"
 done

@@ -13,12 +13,15 @@ import {
   CreateEmailIdentityPolicyCommand,
   UpdateEmailIdentityPolicyCommand,
   GetAccountCommand,
+  PutEmailIdentityMailFromAttributesCommand,
 } from '@aws-sdk/client-sesv2';
 
 const REGION = 'eu-central-1';
 const ACCOUNT = '278924352912';
 const DOMAIN = 'icruiting.at';
 const POOLS = ['eu-central-1_MeIKYtqcU', 'eu-central-1_WK7ijcvLY'];
+// Custom MAIL FROM so SPF aligns with the From domain (DMARC); default would be amazonses.com.
+const MAIL_FROM = `mail.${DOMAIN}`;
 
 (async () => {
   const ses = new SESv2Client({region: REGION});
@@ -43,6 +46,19 @@ const POOLS = ['eu-central-1_MeIKYtqcU', 'eu-central-1_WK7ijcvLY'];
     console.log(`  ${token}._domainkey.${DOMAIN}  CNAME  ${token}.dkim.amazonses.com`);
   }
   console.log(`DKIM status: ${identity.DkimAttributes?.Status}`);
+
+  await ses.send(
+    new PutEmailIdentityMailFromAttributesCommand({
+      EmailIdentity: DOMAIN,
+      MailFromDomain: MAIL_FROM,
+      BehaviorOnMxFailure: 'USE_DEFAULT_VALUE',
+    }),
+  );
+  console.log(`MAIL FROM domain ${MAIL_FROM} — records to add at the DNS host:`);
+  console.log(`  ${MAIL_FROM}  MX   10 feedback-smtp.${REGION}.amazonses.com`);
+  console.log(`  ${MAIL_FROM}  TXT  "v=spf1 include:amazonses.com ~all"`);
+  console.log(`DMARC (once, for the domain):`);
+  console.log(`  _dmarc.${DOMAIN}  TXT  "v=DMARC1; p=none; rua=mailto:johannes.oster@${DOMAIN}"`);
 
   const identityArn = `arn:aws:ses:${REGION}:${ACCOUNT}:identity/${DOMAIN}`;
   const policy = {

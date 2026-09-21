@@ -51,25 +51,29 @@ swr is upgraded (JO-27); flip it off locally, do not commit that.
 
 ## Rollout runbook (prod)
 
-Order matters: the code must be live before the pool stops offering passwords, and the backfill must
-run before anyone tries a code.
+Zero-downtime order: prepare the pool while the old web still runs, deploy, then close the old flows.
 
-1. **Merge the PR.** Netlify builds the web, the Heroku workflow deploys the server. From now on the
-   login page offers e-mail codes; until step 3 Cognito rejects them ("USER_AUTH flow not enabled"),
-   so do steps 2–3 right after the merge.
-2. **Deploy the Lambda** — `cd server && yarn lambda:deploy` with the `icruiting-dev` key in the env.
-   Shared by both pools: from this moment uninvited Google logins are rejected everywhere.
-3. On a Heroku dyno (real prod credentials, never on the VPS), in this order:
+1. **Before the merge, on a Heroku dyno** (real prod credentials, never on the VPS):
    ```
    heroku run -a icruiting-api -- yarn ts-node scripts/cognito/backfillEmailVerified.ts eu-central-1_WK7ijcvLY --apply
+   heroku run -a icruiting-api -- yarn ts-node scripts/cognito/configurePool.ts eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply --keep-password-flows
+   ```
+   Backfill: every invited user gets a verified e-mail, pending invites become CONFIRMED. Pool: Essentials,
+   `EMAIL_OTP` allowed, `USER_AUTH` added *next to* the old password flows, LEGACY existence errors. The
+   deployed (old) web keeps working; nothing changes for users yet. Both scripts print a dry run without
+   `--apply` — keep that output, it is the rollback reference.
+2. **Merge the PR.** Netlify builds the web (login = e-mail code / Google), the Heroku workflow deploys the
+   server (invites, guards). Existing sessions stay valid; the refresh-token flow is untouched.
+3. **Right after the merge:**
+   ```
+   cd server && yarn lambda:deploy      # icruiting-dev key in the env; shared by both pools
    heroku run -a icruiting-api -- yarn ts-node scripts/cognito/configurePool.ts eu-central-1_WK7ijcvLY 6fb5ic9a0vkrb1osaunksajjgn --apply
    ```
-   Both print a dry run first when `--apply` is omitted. `configurePool` feeds the full existing
-   configuration back, so callback URLs, the Google provider and the Lambda trigger stay as they are.
-4. **SES for prod mail.** Create the sender identity for `icruiting.at` (SESv2 `CreateEmailIdentity`),
-   add the three DKIM CNAMEs at GoDaddy, leave the SES sandbox (console → request production access),
-   then switch the prod pool's `EmailConfiguration` to `DEVELOPER` with that identity's ARN. Until
-   then the 50/day cap applies.
+   From now on uninvited Google logins are rejected and the app client no longer accepts passwords.
+4. **SES for prod mail** (can precede everything; only the last step depends on it): create the sender
+   identity for `icruiting.at` (SESv2 `CreateEmailIdentity`), add the three DKIM CNAMEs at GoDaddy, leave
+   the SES sandbox (console → request production access), then set the prod pool's `EmailConfiguration`
+   to `DEVELOPER` with that identity's ARN. Until then Cognito's own sender applies: 50 mails/day/pool.
 
 Rollback: the previous Lambda source is in `infra/lambda/linkProviders/original/`; pool and client
 settings before the change are printed by the scripts' dry runs — keep that output.

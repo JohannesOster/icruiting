@@ -1,6 +1,6 @@
 import db from '.';
 import {dbMigrate} from './migrate';
-import config from 'config';
+import config from '../../config';
 
 export const createAll = async () => dbMigrate('update');
 /**

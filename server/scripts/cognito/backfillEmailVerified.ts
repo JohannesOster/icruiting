@@ -1,7 +1,9 @@
 /**
- * One-off (JO-75): mark the e-mail of every invited (native) user as verified. Invites never set
- * `email_verified`, and Cognito refuses both federated logins and e-mail codes for unverified
- * addresses. An invited address is trusted by definition.
+ * One-off (JO-75): make every invited (native) user able to log in passwordless —
+ *   - e-mail marked verified (invites never set it; Cognito refuses federated logins and e-mail
+ *     codes for unverified addresses),
+ *   - pending invites (FORCE_CHANGE_PASSWORD, temporary password never used) confirmed with a random
+ *     permanent password, like new invites.
  *
  * Usage (from server/):  yarn ts-node scripts/cognito/backfillEmailVerified.ts <userPoolId> [--apply]
  * Prints counts only (no e-mail addresses). For prod run it on a Heroku dyno.
@@ -27,27 +29,31 @@ const attr = (u: UserType, n: string) => u.Attributes?.find((a) => a.Name === n)
     PaginationToken = r.PaginationToken;
   } while (PaginationToken);
 
-  const todo = users.filter(
-    (u) =>
-      u.UserStatus !== 'EXTERNAL_PROVIDER' &&
-      attr(u, 'email') &&
-      attr(u, 'email_verified') !== 'true',
-  );
+  const native = users.filter((u) => u.UserStatus !== 'EXTERNAL_PROVIDER' && attr(u, 'email'));
+  const unverified = native.filter((u) => attr(u, 'email_verified') !== 'true');
+  const pending = native.filter((u) => u.UserStatus === 'FORCE_CHANGE_PASSWORD');
   console.log(
-    `users=${users.length} unverified native users=${todo.length}` + (apply ? '' : ' (dry run)'),
+    `users=${users.length} native=${native.length} unverified=${unverified.length} pending=${pending.length}` +
+      (apply ? '' : ' (dry run)'),
   );
   if (!apply) return;
 
-  let ok = 0;
-  for (const u of todo) {
+  for (const u of unverified) {
     await c.adminUpdateUserAttributes({
       UserPoolId: userPoolId,
       Username: u.Username!,
       UserAttributes: [{Name: 'email_verified', Value: 'true'}],
     });
-    ok++;
   }
-  console.log(`updated=${ok}`);
+  for (const u of pending) {
+    await c.adminSetUserPassword({
+      UserPoolId: userPoolId,
+      Username: u.Username!,
+      Password: randomBytes(24).toString('base64url') + 'aA1!',
+      Permanent: true,
+    });
+  }
+  console.log(`verified=${unverified.length} confirmed=${pending.length}`);
 })().catch((e) => {
   console.error(e.name, e.message);
   process.exit(1);

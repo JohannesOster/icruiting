@@ -54,9 +54,6 @@ const Navbar = () => {
         </MobileNavItem>
       </Box>
       <Box textAlign="center">
-        <MobileNavItem onClick={closeMenu} style={{borderBottom: 'none'}}>
-          <Link href="/login">Anmelden</Link>
-        </MobileNavItem>
         <MobileNavItem
           onClick={closeMenu}
           style={{
@@ -65,7 +62,7 @@ const Navbar = () => {
             border: 'none',
           }}
         >
-          <Link href="/signup">Registrieren</Link>
+          <Link href="/login">Anmelden</Link>
         </MobileNavItem>
       </Box>
     </>
@@ -108,10 +105,7 @@ const Navbar = () => {
         <Link href="/#contact">Kontakt</Link>
       </NavItem>
       <NavItem>
-        <Link href="/login">Anmelden</Link>
-      </NavItem>
-      <NavItem>
-        <Button onClick={() => router.push('/signup')}>Registrieren</Button>
+        <Button onClick={() => router.push('/login')}>Anmelden</Button>
       </NavItem>
     </>
   );

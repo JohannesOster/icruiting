@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer';
 import config from 'config';
 
-export const sendMail = (options: Mail.Options): Promise<any> => {
+export const sendMail = async (options: Mail.Options): Promise<any> => {
   const user = config.get('mailService.email');
   const pass = config.get('mailService.password');
 

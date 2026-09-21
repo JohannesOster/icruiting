@@ -18,6 +18,14 @@ Handoff protocol for an implementation session:
 3. Do only what the ticket says. Anything else you notice → create a new Linear issue in the `icruiting` project (prefix `server:`/`web:`/`infra:`), don't fix it in passing.
 4. Commit, push the branch, open a PR with `gh`, and comment the PR URL + what you verified on the ticket. Leave the ticket `In Progress` — the owner merges and moves it to `Done`.
 
+## Auth in one paragraph
+
+Invite-only and passwordless since JO-75: admins invite by e-mail, people log in with an e-mail
+one-time code or Google. The Cognito PreSignUp trigger lives in `infra/lambda/linkProviders/` and
+rejects Google logins without an invite. `docs/auth.md` has the flow, the Cognito quirks behind it,
+the tailnet dev-server recipe and the prod rollout runbook — read it before touching login, invites,
+the Lambda or the pool config scripts in `server/src/scripts/`.
+
 ## Hard rules
 
 - **Pushing to `main` deploys to production** — Netlify builds `main` on push (web), and `.github/workflows/deploy-server.yml` pushes a `git subtree split` of `server/` to Heroku on every `main` push that touches it. Never push to `main`. PRs only.

@@ -9,7 +9,6 @@ export const AuthService = () => {
 
     return Promise.resolve({User: {Username: email, Attributes}});
   };
-  const signUpUser = () => Promise.resolve({user: {}});
   const listUsers = () => Promise.resolve([]);
   const updateUserRole = ({userRole}: any) => {
     return Promise.resolve({
@@ -22,7 +21,6 @@ export const AuthService = () => {
   return {
     validateToken,
     createUser,
-    signUpUser,
     listUsers,
     retrieve,
     deleteUser,

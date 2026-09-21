@@ -1,10 +1,7 @@
-import {CognitoUserAttribute, CognitoUserPool, ISignUpResult} from 'amazon-cognito-identity-js';
 import {BaseError} from 'application';
-import {
-  CognitoIdentityProvider,
-  DeliveryMediumType,
-} from '@aws-sdk/client-cognito-identity-provider';
+import {CognitoIdentityProvider} from '@aws-sdk/client-cognito-identity-provider';
 import CognitoExpress from 'cognito-express';
+import {randomBytes} from 'crypto';
 import {mapCognitoUser, removePrefix} from './utils';
 import config from 'config';
 
@@ -43,39 +40,31 @@ export const AuthService = () => {
     tenantId: string;
     userRole: 'member' | 'admin';
   };
-  const createUser = (user: createUserProps) => {
+  /**
+   * Invite: creates the user ready to log in passwordless (JO-75) — e-mail verified, CONFIRMED via a
+   * random permanent password nobody knows, no Cognito invitation mail (the caller sends ours).
+   */
+  const createUser = async (user: createUserProps) => {
     const cIdp = new CognitoIdentityProvider();
-    const params = {
+    const created = await cIdp.adminCreateUser({
       UserPoolId: cognitoUserPoolId,
       Username: user.email,
-      DesiredDeliveryMediums: [DeliveryMediumType.EMAIL],
+      MessageAction: 'SUPPRESS',
       UserAttributes: [
         {Name: 'email', Value: user.email},
+        {Name: 'email_verified', Value: 'true'},
         {Name: 'custom:tenant_id', Value: user.tenantId},
         {Name: 'custom:user_role', Value: user.userRole},
       ],
-    };
-
-    return cIdp.adminCreateUser(params);
-  };
-  type SignUpParams = {tenantId: string; email: string; password: string};
-  const signUpUser = ({tenantId, email, password}: SignUpParams): Promise<ISignUpResult> => {
-    const config = {UserPoolId: cognitoUserPoolId, ClientId: clientId};
-    const userPool = new CognitoUserPool(config);
-    const attributes = [
-      new CognitoUserAttribute({Name: 'custom:tenant_id', Value: tenantId}),
-      new CognitoUserAttribute({Name: 'custom:user_role', Value: 'admin'}),
-    ];
-
-    return new Promise((resolve, reject) => {
-      userPool.signUp(email, password, attributes, [], (error, result) => {
-        if (error) return reject(error);
-        if (!result) return reject(new BaseError(500, 'Failed to signup user'));
-        resolve(result);
-      });
     });
+    await cIdp.adminSetUserPassword({
+      UserPoolId: cognitoUserPoolId,
+      Username: user.email,
+      Password: randomBytes(24).toString('base64url') + 'aA1!',
+      Permanent: true,
+    });
+    return created;
   };
-
   const listUsers = (tenantId: string): Promise<{[key: string]: string}[]> => {
     const cIdp = new CognitoIdentityProvider();
     return new Promise(async (resolve) => {
@@ -165,7 +154,6 @@ export const AuthService = () => {
   return {
     validateToken,
     createUser,
-    signUpUser,
     listUsers,
     retrieve,
     deleteUser,

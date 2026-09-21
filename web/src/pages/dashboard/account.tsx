@@ -47,7 +47,6 @@ const Account = () => {
       )}
       <HeadingL>Account</HeadingL>
       <Box display="flex" gap={spacing.scale400} flexDirection="column">
-        <Link href="/password-reset">Passwort zurrücksetzten</Link>
         <Link href="/logout">Abmelden</Link>
         {currentUser?.userRole === 'admin' && (
           <Box>

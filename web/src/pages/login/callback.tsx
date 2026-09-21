@@ -1,19 +1,13 @@
 import React, {useEffect, useState} from 'react';
 import {Spinner} from 'components';
-import {useAuth} from 'context';
+import {useAuth, useToaster} from 'context';
 import {useRouter} from 'next/router';
-import {
-  CognitoAccessToken,
-  CognitoIdToken,
-  CognitoRefreshToken,
-  CognitoUser,
-  CognitoUserPool,
-  CognitoUserSession,
-} from 'amazon-cognito-identity-js';
 import config from 'config';
+import {storeSession} from 'services/auth/service';
 
 const Login: React.FC = () => {
   const {refetchUser, currentUser} = useAuth();
+  const toaster = useToaster();
   const router = useRouter();
   const {code, error, error_description} = router.query;
 
@@ -37,37 +31,26 @@ const Login: React.FC = () => {
     body.append('redirect_uri', config.loginCallbackUrl);
 
     fetch(url, {method: 'POST', headers, body, redirect: 'follow'})
-      .then((response) => response.json())
-      .then(({id_token, access_token, refresh_token}) => {
-        const userPool = new CognitoUserPool({
-          UserPoolId: config.userPoolId,
-          ClientId: config.userPoolWebClientId,
-        });
-
-        const cognitoIdToken = new CognitoIdToken({
-          IdToken: id_token,
-        });
-        const cognitoAccessToken = new CognitoAccessToken({
-          AccessToken: access_token,
-        });
-        const cognitoRefreshToken = new CognitoRefreshToken({
-          RefreshToken: refresh_token,
-        });
-
-        const username = cognitoIdToken.payload.sub;
-        const user = new CognitoUser({Pool: userPool, Username: username});
-        user.setSignInUserSession(
-          new CognitoUserSession({
-            AccessToken: cognitoAccessToken,
-            IdToken: cognitoIdToken,
-            RefreshToken: cognitoRefreshToken,
-          }),
-        );
+      .then(async (response) => {
+        const json = await response.json();
+        // Cognito answers 400 {error: 'invalid_grant'} for a reused/expired code — surface it
+        // instead of spinning forever (JO-67 QA)
+        if (!response.ok || !json.id_token) {
+          throw new Error(
+            json.error_description || json.error || `Token exchange failed (${response.status})`,
+          );
+        }
+        return json;
       })
+      .then(storeSession)
       .then(() => {
         refetchUser();
       })
-      .catch((error) => console.log('error', error));
+      .catch((error) => {
+        console.error('login callback', error);
+        toaster.danger(`Anmeldung fehlgeschlagen: ${error.message}`);
+        router.replace('/login');
+      });
   };
 
   useEffect(() => {
@@ -80,7 +63,17 @@ const Login: React.FC = () => {
     if (!error_description) return;
     // filter error already exists entry after linking providers
     // https://stackoverflow.com/questions/47815161/cognito-auth-flow-fails-with-already-found-an-entry-for-username-facebook-10155
-    if (!error_description.toString().startsWith('Already')) return;
+    if (!error_description.toString().startsWith('Already')) {
+      // The PreSignUp trigger (infra/lambda/linkProviders) refusing a Google login that was never
+      // invited. Cognito wraps its message: "PreSignUp failed with error <message>."
+      const message = error_description
+        .toString()
+        .replace(/^PreSignUp failed with error /, '')
+        .replace(/\.\s*$/, '');
+      toaster.danger(message);
+      router.replace('/login');
+      return;
+    }
     console.error(error_description);
     console.info('Repeat login');
     const url = `${config.userPoolDomain}/oauth2/authorize?identity_provider=Google&response_type=code&client_id=${config.userPoolWebClientId}&${config.loginCallbackUrl}`;

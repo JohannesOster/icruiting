@@ -1,0 +1,42 @@
+head
+  meta(http-equiv='content-type', content='text/html; charset=utf-8')
+  meta(name='viewport', content='width=device-width, initial-scale=1.0;')
+  title Einladung zu #{tenantName}
+body(style='padding: 0; margin: 0; width: 100%; height: 100%')
+  table(width='100%', align='center', border='0', cellpadding='0', cellspacing='0')
+    tr
+      td &nbsp;
+    tr
+      td(align='center', valign='top')
+        table.container(border='0', cellpadding='0', cellspacing='20', align='center', width='90%', style='max-width: 800px')
+          tr
+            td(align='center', valign='top', style='font-size: 24px; font-weight: bold; font-family: sans-serif', width='87.5%')
+              | Du wurdest eingeladen
+          tr
+            td(align='center', valign='top', style='font-size: 18px; font-weight: 300; font-family: sans-serif', width='87.5%')
+              | - #{tenantName} -
+          tr
+            td(align='center', valign='top', width='87.5%')
+              hr(color='#E0E0E0', align='center', width='100%', size='1', noshade='')
+          tr
+            td(valign='top', style='font-size: 17px; font-weight: 400; color: #000000; font-family: sans-serif', width='87.5%')
+              p Hallo,
+              p #[strong #{tenantName}] hat dich zu icruiting eingeladen.
+              p
+                | Du brauchst kein Passwort: Melde dich einfach mit dieser E-Mail-Adresse an und du bekommst einen Anmeldecode per E-Mail – oder verwende „Mit Google anmelden“, wenn diese Adresse ein Google-Konto ist.
+              p
+                a(href=loginUrl, target='_blank', style='display: inline-block; padding: 12px 20px; background: #1d3557; color: #ffffff; text-decoration: none; font-family: sans-serif; font-weight: 600') Jetzt anmelden
+              p
+                | Viel Erfolg
+                br
+                | Dein icruiting-Team
+          tr
+            td(align='center', valign='top', width='87.5%')
+              hr(color='#E0E0E0', align='center', width='100%', size='1', noshade='')
+        table(border='0', cellpadding='0', cellspacing='20', align='center', style='color: #999999; font-family: sans-serif; font-size: 13px; font-weight: 400')
+          tr
+            td(align='center', valign='top', width='87.5%')
+              | Du kennst #{tenantName} nicht? Dann ignoriere diese E-Mail einfach.
+              br
+              br
+              a(href='https://icruiting.at', target='_blank', style='color: #999999; font-family: sans-serif; font-size: 13px; font-weight: 400') icruiting.at

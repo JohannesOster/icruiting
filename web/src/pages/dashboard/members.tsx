@@ -73,12 +73,13 @@ export const Members = () => {
           setShowNewMembereForm(false);
           toaster.success('Mitarbeiter erfolgreich eingeladen.');
           reset();
+          revalidate();
         })
         .catch((err) => {
           toaster.danger(err.message);
         });
     },
-    [reset, toaster],
+    [reset, toaster, revalidate],
   );
 
   const updateMember = () => {

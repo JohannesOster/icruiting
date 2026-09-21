@@ -10,26 +10,6 @@ import {tenantsMapper} from '../mappers';
 import logger from 'shared/infrastructure/logger';
 
 export const TenantsAdapter = (db: DB) => {
-  const create = httpReqHandler(async (req) => {
-    const {tenantName, email, password, stripePriceId} = req.body;
-    const {customerId} = await paymentService.customers.create(email, stripePriceId);
-
-    const tenant = createTenant({tenantName, stripeCustomerId: customerId});
-    const props = tenantsMapper.toPersistance(tenant);
-    const raw = await db.tenants.create(props);
-    const tenantDTO = tenantsMapper.toDTO(raw);
-
-    const signUpParams = {tenantId: tenant.id, email, password};
-    const {user, userSub} = await authService.signUpUser(signUpParams);
-
-    logger.ntfy(`New Signup: ${tenant.id}, ${tenant.tenantName}, ${email} 🎉`, {
-      title: 'icruiting signup',
-      tags: 'tada',
-    });
-
-    return {status: 201, body: {tenant: tenantDTO, user: {userId: userSub, ...user}}};
-  });
-
   const retrieve = httpReqHandler(async (req) => {
     const {tenantId} = req.user;
     const tenant = await db.tenants.retrieve(tenantId);
@@ -66,5 +46,5 @@ export const TenantsAdapter = (db: DB) => {
     await storageService.bulkDel(keys);
   };
 
-  return {create, retrieve, del};
+  return {retrieve, del};
 };

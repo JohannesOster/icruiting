@@ -1,0 +1,12 @@
+{
+  "name": "icruiting-link-providers",
+  "private": true,
+  "type": "module",
+  "description": "Cognito PreSignUp trigger: link Google logins to invited users, reject everyone else",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1136.0"
+  }
+}

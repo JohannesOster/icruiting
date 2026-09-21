@@ -1,5 +1,5 @@
 import express from 'express';
-import {tenantCreateRules, subsCreateRules} from './validation';
+import {subsCreateRules} from './validation';
 import {
   RouterFactory,
   requireAuth,
@@ -26,7 +26,7 @@ export const TenantsRouter: RouterFactory = (dbAccess) => {
   const paymentURL = '/:tenantId/paymentMethods';
   const router = express.Router();
 
-  router.post('/', tenantCreateRules, validate, tenantsAdapter.create);
+  // No self-service signup (JO-67/JO-75): organisations are created by hand.
 
   router.use(requireAuth);
   router.use(requireAdmin);

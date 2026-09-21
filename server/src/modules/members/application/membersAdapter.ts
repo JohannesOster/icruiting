@@ -1,17 +1,35 @@
 import authService from 'shared/infrastructure/services/authService';
 import {httpReqHandler} from 'shared/infrastructure/http';
 import {DB} from '../infrastructure/repositories';
+import {BaseError} from 'application';
+import config from 'config';
+import logger from 'shared/infrastructure/logger';
+import {sendMail} from 'shared/infrastructure/services/mailService';
+import templates, {Template} from 'shared/infrastructure/services/mailService/templates';
 
 export const MembersAdapter = (db: DB) => {
   const create = httpReqHandler(async (req) => {
     const {emails} = req.body;
     const {tenantId} = req.user;
+    const tenant = await db.tenants.retrieve(tenantId);
+    if (!tenant) throw new BaseError(404, 'Tenant Not Found');
 
-    const promises = emails.map((email: string) => {
-      return authService.createUser({userRole: 'member', tenantId, email});
-    });
-
-    const resp = await Promise.all(promises);
+    const resp = await Promise.all(
+      emails.map(async (email: string) => {
+        const created = await authService.createUser({userRole: 'member', tenantId, email});
+        // Our own invitation instead of Cognito's temporary-password mail (JO-75). Best effort:
+        // the account exists either way and the admin sees the member in the list.
+        await sendMail({
+          to: email,
+          subject: `Einladung zu ${tenant.tenantName} auf icruiting`,
+          html: templates(Template.MemberInvitation, {
+            tenantName: tenant.tenantName,
+            loginUrl: config.get('webBaseUrl') + '/login',
+          }),
+        }).catch((error) => logger.error(error));
+        return created;
+      }),
+    );
     return {status: 201, body: resp};
   });
 

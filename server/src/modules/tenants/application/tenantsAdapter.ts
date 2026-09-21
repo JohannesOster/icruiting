@@ -14,9 +14,12 @@ export const TenantsAdapter = (db: DB) => {
     const {tenantId} = req.user;
     const tenant = await db.tenants.retrieve(tenantId);
     if (!tenant) throw new BaseError(404, 'Tenant Not Found');
-    if (tenant.theme) tenant.theme = await storageService.getUrl(tenant.theme);
+    const tenantDTO = tenantsMapper.toDTO(tenant);
+    if (!tenant.theme) return {body: tenantDTO};
 
-    return {body: tenant};
+    // the entity and DTO are frozen, so build a new object instead of assigning the url
+    const theme = await storageService.getUrl(tenant.theme);
+    return {body: {...tenantDTO, theme}};
   });
 
   const del = httpReqHandler(async (req) => {

@@ -24,7 +24,9 @@ export const AuthService = () => {
   const validateToken = (token: string): Promise<User> => {
     return new Promise((resolve, reject) => {
       cognitoExpress.validate(token, (err: Error, payload: any) => {
-        if (err) reject(new BaseError(401, err.message));
+        // cognito-express passes payload = null on error; reading it would throw inside its
+        // promise executor, surface as unhandledRejection and alert as a 500 (JO-79).
+        if (err) return reject(new BaseError(401, err.message));
         resolve({
           tenantId: payload['custom:tenant_id'],
           userId: payload.sub,

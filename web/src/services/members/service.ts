@@ -1,12 +1,15 @@
 import API from '../request';
 
+/** Mirrors the server's members adapter: why one address of an invite batch failed. */
+export type InviteFailure = {email: string; reason: 'already_exists' | 'unknown'};
+
 export const Members = () => {
   const list = () => {
     return API.get('/members');
   };
 
   const create = (emails: string[]) => {
-    return API.post('/members', {body: {emails}});
+    return API.post<{invited: string[]; failed: InviteFailure[]}>('/members', {body: {emails}});
   };
 
   const updateUserRole = (email: string, userRole: string) => {

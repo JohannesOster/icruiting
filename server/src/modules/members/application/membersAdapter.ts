@@ -4,19 +4,38 @@ import {DB} from '../infrastructure/repositories';
 import {BaseError} from 'application';
 import config from 'config';
 import logger from 'shared/infrastructure/logger';
+import {errorHandler} from 'shared/infrastructure/errorHandler';
 import {sendMail} from 'shared/infrastructure/services/mailService';
 import templates, {Template} from 'shared/infrastructure/services/mailService/templates';
 
+// Mirrored in web/src/services/members/service.ts; web/src/utils/inviteFailures.ts renders them.
+type InviteFailureReason = 'already_exists' | 'unknown';
+type InviteFailure = {email: string; reason: InviteFailureReason};
+
+// Cognito error names an admin can act on. The pool is shared by all tenants, so 'already_exists'
+// deliberately does not say whether the account belongs to this tenant or another one.
+const inviteFailureReason = (error: unknown): InviteFailureReason => {
+  const name = error instanceof Error ? error.name : undefined;
+  if (name === 'UsernameExistsException') return 'already_exists';
+  return 'unknown';
+};
+
 export const MembersAdapter = (db: DB) => {
   const create = httpReqHandler(async (req) => {
-    const {emails} = req.body;
     const {tenantId} = req.user;
     const tenant = await db.tenants.retrieve(tenantId);
     if (!tenant) throw new BaseError(404, 'Tenant Not Found');
 
-    const resp = await Promise.all(
-      emails.map(async (email: string) => {
-        const created = await authService.createUser({userRole: 'member', tenantId, email});
+    // A repeated address would otherwise be created once and then reported as already existing.
+    const emails = (req.body.emails as string[]).filter(
+      (email, i, all) => all.findIndex((e) => e.toLowerCase() === email.toLowerCase()) === i,
+    );
+
+    // Each address succeeds or fails on its own: one taken address must not hide that the others
+    // were created and mailed, so the admin gets a per-address report instead of one error.
+    const results = await Promise.allSettled(
+      emails.map(async (email) => {
+        await authService.createUser({userRole: 'member', tenantId, email});
         // Our own invitation instead of Cognito's temporary-password mail (JO-75). Best effort:
         // the account exists either way and the admin sees the member in the list.
         await sendMail({
@@ -27,10 +46,33 @@ export const MembersAdapter = (db: DB) => {
             loginUrl: config.get('webBaseUrl') + '/login',
           }),
         }).catch((error) => logger.error(error));
-        return created;
       }),
     );
-    return {status: 201, body: resp};
+
+    const invited: string[] = [];
+    const failed: InviteFailure[] = [];
+    const unexpected: Error[] = [];
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        invited.push(emails[i]);
+      } else {
+        const reason = inviteFailureReason(result.reason);
+        if (reason === 'unknown') unexpected.push(result.reason);
+        failed.push({email: emails[i], reason});
+      }
+    });
+    // Known reasons are the admin's to fix; anything else is ours and alerts like a 500 would -
+    // once per request, since a throttled batch fails every address for the same cause.
+    if (unexpected.length) {
+      const [first] = unexpected;
+      const summary = `${unexpected.length} of ${emails.length} member invites failed`;
+      const alert = new BaseError(500, `${summary}: ${first.message}`, first.name);
+      alert.stack = first.stack;
+      errorHandler.handleError(alert);
+    }
+    unexpected.slice(1).forEach((error) => logger.error(error));
+
+    return {status: failed.length ? 200 : 201, body: {invited, failed}};
   });
 
   const list = httpReqHandler(async (req) => {

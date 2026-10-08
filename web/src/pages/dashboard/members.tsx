@@ -25,6 +25,8 @@ import styled, {useTheme} from 'styled-components';
 import {API} from 'services';
 import {useToaster} from 'context';
 import {useFetch} from 'components/useFetch';
+import {inviteFailureMessages} from 'utils/inviteFailures';
+import {InviteFailure} from 'services/members/service';
 
 export const Header = styled.header`
   display: flex;
@@ -54,7 +56,11 @@ export const Members = () => {
   const [deletingMember, setDeletingMember] = useState<string | null>(null);
   const [showNewMembereForm, setShowNewMembereForm] = useState(false);
 
-  const {errors, formState, handleSubmit, reset, control} = useForm<FormValues>({
+  const [inviteFailures, setInviteFailures] = useState<InviteFailure[]>([]);
+  // ChipInput only reads its value on mount; bumping its key shows the failed-only list.
+  const [chipInputKey, setChipInputKey] = useState(0);
+
+  const {errors, formState, handleSubmit, reset, setValue, control} = useForm<FormValues>({
     mode: 'onChange',
     resolver: yupResolver(
       object({
@@ -67,19 +73,34 @@ export const Members = () => {
 
   const addMembere = useCallback(
     async ({emails}: {emails: string[]}) => {
+      setInviteFailures([]);
       await API.members
         .create(emails)
-        .then(() => {
-          setShowNewMembereForm(false);
-          toaster.success('Mitarbeiter erfolgreich eingeladen.');
-          reset();
-          revalidate();
+        .then(({invited, failed}) => {
+          if (invited.length) {
+            toaster.success(`${invited.length} Mitarbeiter erfolgreich eingeladen.`);
+            revalidate();
+          }
+          if (!failed.length) {
+            setShowNewMembereForm(false);
+            reset();
+          } else {
+            // Keep the dialog open with only the failed addresses, so they can be fixed or removed.
+            // Key bump and setValue must stay in one tick so the remounted input sees the new value.
+            setInviteFailures(failed);
+            setChipInputKey((key) => key + 1);
+            setValue(
+              'emails',
+              failed.map(({email}) => email),
+              {shouldDirty: true, shouldValidate: true},
+            );
+          }
         })
         .catch((err) => {
           toaster.danger(err.message);
         });
     },
-    [reset, toaster, revalidate],
+    [reset, setValue, toaster, revalidate],
   );
 
   const updateMember = () => {
@@ -187,6 +208,7 @@ export const Members = () => {
         <Dialog
           onClose={() => {
             setShowNewMembereForm(false);
+            setInviteFailures([]);
           }}
           title="Neuen Mitarbeiter Einladen"
         >
@@ -197,13 +219,20 @@ export const Members = () => {
                 control={control}
                 render={(props) => (
                   <ChipInput
+                    key={chipInputKey}
                     description='"Tab" klicken um E-Mail-Adresse zu bestätigen'
                     placeholder="E-Mail-Adresse"
                     label="E-Mail-Adresse des neuen Mitarbeiters"
                     errors={
                       errorsFor(errors, 'emails').length
                         ? errorsFor(errors, 'emails')
-                        : errorsFor(errors, 'emails[0]')
+                        : [
+                            ...errorsFor(errors, 'emails[0]'),
+                            // Only for addresses still in the field, so removing one drops its line
+                            ...inviteFailureMessages(
+                              inviteFailures.filter(({email}) => props.value.includes(email)),
+                            ),
+                          ]
                     }
                     autoFocus
                     {...props}

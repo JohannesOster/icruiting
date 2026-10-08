@@ -114,19 +114,24 @@ describe('members', () => {
 
       expect(resp.body).toStrictEqual({invited: [], failed: [{email, reason: 'unknown'}]});
       expect(ntfy).toHaveBeenCalledTimes(1);
-      expect(ntfy.mock.calls[0][0]).toMatch(/^Rate exceeded/);
+      expect(ntfy.mock.calls[0][0]).toMatch(/Rate exceeded/);
     });
 
-    it('Alerts once per request, however many addresses failed unexpectedly', async () => {
+    it('Alerts once per request, saying how many addresses failed unexpectedly', async () => {
       const ntfy = jest.spyOn(logger, 'ntfy');
-      jest.spyOn(authService, 'createUser').mockRejectedValue(new Error('Rate exceeded'));
+      const fresh = internet.email();
+      jest.spyOn(authService, 'createUser').mockImplementation(async ({email}) => {
+        if (email === fresh) return {$metadata: {}};
+        throw new Error('Rate exceeded');
+      });
 
       await request(app)
         .post('/members')
-        .send({emails: [internet.email(), internet.email(), internet.email()]})
+        .send({emails: [internet.email(), fresh, internet.email()]})
         .expect(200);
 
       expect(ntfy).toHaveBeenCalledTimes(1);
+      expect(ntfy.mock.calls[0][0]).toMatch(/^2 of 3 member invites failed: Rate exceeded/);
     });
 
     it('Invites an address listed twice only once', async () => {

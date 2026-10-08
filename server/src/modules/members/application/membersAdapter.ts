@@ -8,7 +8,7 @@ import {errorHandler} from 'shared/infrastructure/errorHandler';
 import {sendMail} from 'shared/infrastructure/services/mailService';
 import templates, {Template} from 'shared/infrastructure/services/mailService/templates';
 
-// Mirrored in web/src/services/members/service.ts, which renders these as German messages.
+// Mirrored in web/src/services/members/service.ts; web/src/utils/inviteFailures.ts renders them.
 type InviteFailureReason = 'already_exists' | 'unknown';
 type InviteFailure = {email: string; reason: InviteFailureReason};
 
@@ -63,7 +63,13 @@ export const MembersAdapter = (db: DB) => {
     });
     // Known reasons are the admin's to fix; anything else is ours and alerts like a 500 would -
     // once per request, since a throttled batch fails every address for the same cause.
-    if (unexpected.length) errorHandler.handleError(unexpected[0]);
+    if (unexpected.length) {
+      const [first] = unexpected;
+      const summary = `${unexpected.length} of ${emails.length} member invites failed`;
+      const alert = new BaseError(500, `${summary}: ${first.message}`, first.name);
+      alert.stack = first.stack;
+      errorHandler.handleError(alert);
+    }
     unexpected.slice(1).forEach((error) => logger.error(error));
 
     return {status: failed.length ? 200 : 201, body: {invited, failed}};

@@ -58,7 +58,7 @@ export const Members = () => {
 
   const [inviteFailures, setInviteFailures] = useState<InviteFailure[]>([]);
   // ChipInput only reads its value on mount; bumping its key shows the failed-only list.
-  const [inviteRound, setInviteRound] = useState(0);
+  const [chipInputKey, setChipInputKey] = useState(0);
 
   const {errors, formState, handleSubmit, reset, setValue, control} = useForm<FormValues>({
     mode: 'onChange',
@@ -83,16 +83,18 @@ export const Members = () => {
           }
           if (!failed.length) {
             setShowNewMembereForm(false);
-            return reset();
+            reset();
+          } else {
+            // Keep the dialog open with only the failed addresses, so they can be fixed or removed.
+            // Key bump and setValue must stay in one tick so the remounted input sees the new value.
+            setInviteFailures(failed);
+            setChipInputKey((key) => key + 1);
+            setValue(
+              'emails',
+              failed.map(({email}) => email),
+              {shouldDirty: true, shouldValidate: true},
+            );
           }
-          // Keep the dialog open with only the failed addresses, so they can be fixed or removed.
-          setInviteFailures(failed);
-          setInviteRound((round) => round + 1);
-          setValue(
-            'emails',
-            failed.map(({email}) => email),
-            {shouldDirty: true, shouldValidate: true},
-          );
         })
         .catch((err) => {
           toaster.danger(err.message);
@@ -217,7 +219,7 @@ export const Members = () => {
                 control={control}
                 render={(props) => (
                   <ChipInput
-                    key={inviteRound}
+                    key={chipInputKey}
                     description='"Tab" klicken um E-Mail-Adresse zu bestätigen'
                     placeholder="E-Mail-Adresse"
                     label="E-Mail-Adresse des neuen Mitarbeiters"
@@ -226,7 +228,7 @@ export const Members = () => {
                         ? errorsFor(errors, 'emails')
                         : [
                             ...errorsFor(errors, 'emails[0]'),
-                            // only for addresses still in the field, so removing one drops its line
+                            // Only for addresses still in the field, so removing one drops its line
                             ...inviteFailureMessages(
                               inviteFailures.filter(({email}) => props.value.includes(email)),
                             ),

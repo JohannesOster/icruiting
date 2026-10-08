@@ -43,7 +43,13 @@ Deploys reach Heroku only through `.github/workflows/deploy-server.yml` (git pus
 
 Gotchas, in the order they bite:
 
-- `heroku login` on this VPS always fails with an IP mismatch — the browser completing the auth is on a different network. The token above is the way in; mint replacements on a machine with a browser (`heroku authorizations:create`).
+- `heroku login` on this VPS always fails with an IP mismatch — the browser completing the auth is on a different network. The token above is the way in.
+- **Expired or revoked token** shows up as `The token provided to HEROKU_API_KEY is invalid` here, and as `Authentication failed` in the workflow's "Push to Heroku" step — the local token and the repo secret are the same token, so both break together. The owner mints the replacement on a machine with a browser and pipes it straight here (`--short` prints the bare token; newer CLIs mask it otherwise):
+  ```sh
+  heroku authorizations:create -d "icruiting deploy (GitHub Actions + agent-vps)" --short \
+    | ssh dev@agent-vps 'umask 077; cat > ~/.config/heroku/token'
+  ```
+  Then sync the repo secret from the file without printing it — `tr -d '[:space:]' < ~/.config/heroku/token | gh secret set HEROKU_API_KEY` — re-run the deploy, and have the owner revoke the old authorization (`heroku authorizations`, `heroku authorizations:revoke <id>`).
 - `heroku config` prints every secret. List names only (`heroku config --json | jq keys`) so values stay out of transcripts.
 - Every `config:set`/`config:unset` restarts the dyno. Batch changes into one command to spend one restart.
 - `NODE_ENV` is **not** a config var — `yarn start` runs pm2 with `--env production`, and `src/ecosystem.config.ts` injects it there. `heroku config:get NODE_ENV` returns empty on a healthy app. To check it behaviourally: `middlewares.ts` leaks `err.stack` in responses whenever `NODE_ENV !== 'production'`, so a 404 body carrying no `stack` proves it.

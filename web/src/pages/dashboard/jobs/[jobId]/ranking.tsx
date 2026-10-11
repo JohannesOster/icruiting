@@ -17,9 +17,12 @@ import {useTheme} from 'styled-components';
 import {withAdmin} from 'components';
 import {useRouter} from 'next/router';
 import {useFetch} from 'components/useFetch';
+import {useToaster} from 'context';
+import {settleWithConcurrency} from 'utils/settleWithConcurrency';
 
 export const Ranking = () => {
   const router = useRouter();
+  const toaster = useToaster();
   const [isDownloadingReports, setIsDownloadingReports] = React.useState(false);
   const [isFormSelectionOpen, setIsFormSelectionOpen] = React.useState(false);
   const [selectedForm, setSelectedForm] = React.useState('');
@@ -72,22 +75,29 @@ export const Ranking = () => {
     return {...applicant, ...row, index};
   });
 
-  const onFormSelectionSubmit = () => {
+  const onFormSelectionSubmit = async () => {
     const formId = selectedForm === '' ? undefined : selectedForm;
-    console.log(formId);
     setIsDownloadingReports(true);
-    const promises = data.map((row) => {
-      return API.applicants
-        .downloadReport(row.applicantId, formCategory, row.name, formId)
-        .then((res) => console.log(res))
-        .catch((err) => console.log(err));
-    });
+    // Matches the server's two concurrent PDF renders, so a large job's requests don't sit in its
+    // queue until Heroku's 30 s request timeout.
+    const results = await settleWithConcurrency(data, 2, (row) =>
+      API.applicants.downloadReport(row.applicantId, formCategory, row.name, formId),
+    );
 
-    Promise.all(promises).finally(() => {
-      setSelectedForm('');
-      setIsDownloadingReports(false);
-      setIsFormSelectionOpen(false);
-    });
+    const failedNames = data
+      .filter((_row, i) => results[i].status === 'rejected')
+      .map((row) => row.name);
+    if (failedNames.length) {
+      toaster.danger(
+        `${failedNames.length} von ${
+          data.length
+        } Reports konnten nicht heruntergeladen werden: ${failedNames.join(', ')}`,
+      );
+    }
+
+    setSelectedForm('');
+    setIsDownloadingReports(false);
+    setIsFormSelectionOpen(false);
   };
   const onFormSelectionClose = () => {
     if (isDownloadingReports) return;

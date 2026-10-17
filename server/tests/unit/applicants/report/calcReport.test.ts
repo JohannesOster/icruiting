@@ -118,4 +118,33 @@ describe('calcReport', () => {
       expect(report.formResults[0].formFieldScores.length).toBe(1);
     });
   });
+
+  describe('No scored submissions', () => {
+    // personal-report filters rows by submitter, so a member who has not rated yet sends none
+    it('returns an empty report if there are no submissions', () => {
+      expect(calcReport([], 'applicant1', [])).toEqual({rank: 0});
+    });
+
+    it('returns aggregated answers if only unscored fields are submitted', () => {
+      const rows = [
+        {
+          submissionValue: 'Sehr überzeugend',
+          applicantId: 'applicant1',
+          submitterId: 'submitter1',
+          formFieldId: 'formField1',
+          intent: 'aggregate' as 'aggregate',
+          rowIndex: 0,
+          label: 'Kommentar',
+          formId: 'form1',
+          formTitle: 'form1',
+          formCategory: 'assessment' as 'assessment',
+        },
+      ];
+
+      const report = calcReport(rows, 'applicant1', []) as Report;
+      expect(report.formResults[0].formFieldScores[0].aggregatedValues).toEqual([
+        'Sehr überzeugend',
+      ]);
+    });
+  });
 });

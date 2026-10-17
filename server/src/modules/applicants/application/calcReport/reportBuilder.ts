@@ -2,10 +2,7 @@ import _ from 'lodash';
 import * as calc from './calculator';
 import {Submissions, ReportBuilderReturnType, FormFields} from './types';
 
-export const ReportBuilder = (
-  formFields: FormFields,
-  submissions: Submissions,
-) => {
+export const ReportBuilder = (formFields: FormFields, submissions: Submissions) => {
   const applicantIds = Object.keys(submissions);
 
   const jobRequirements: {
@@ -33,11 +30,7 @@ export const ReportBuilder = (
       Object.entries(formFields).forEach(([formFieldId, formField]) => {
         if (formField.intent === 'aggregate') {
           applicantIds.forEach((applicantId) => {
-            const aggregated = aggregateFormSubmissionFields(
-              applicantId,
-              formId,
-              formFieldId,
-            );
+            const aggregated = aggregateFormSubmissionFields(applicantId, formId, formFieldId);
             if (!aggregated) return;
 
             const path = `aggregates.${applicantId}.${formId}.${formFieldId}`;
@@ -48,11 +41,7 @@ export const ReportBuilder = (
 
         if (formField.intent === 'count_distinct') {
           applicantIds.forEach((applicantId) => {
-            const aggregated = aggregateFormSubmissionFields(
-              applicantId,
-              formId,
-              formFieldId,
-            );
+            const aggregated = aggregateFormSubmissionFields(applicantId, formId, formFieldId);
             if (!aggregated) return;
 
             const options = formField.options?.reduce((acc, curr) => {
@@ -74,9 +63,7 @@ export const ReportBuilder = (
         }
 
         applicantIds.forEach((applicantId) => {
-          const submission = Object.values(submissions[applicantId]).find(
-            (val) => !!val[formId],
-          );
+          const submission = Object.values(submissions[applicantId]).find((val) => !!val[formId]);
           if (!submission) return;
           let path = `${formId}.${formFieldId}`;
 
@@ -111,7 +98,8 @@ export const ReportBuilder = (
 
       return acc;
     },
-    {} as ReportBuilderReturnType,
+    // seeded, so a report without any scored submission still has the maps its consumers read
+    {formFieldScores: {}, formScores: {}, formCategoryScores: {}} as ReportBuilderReturnType,
   );
 
   applicantIds.forEach((applicantId) => {
@@ -129,10 +117,7 @@ export const ReportBuilder = (
           const formId = Object.keys(formFieldKV)[0];
           const formFieldId = formFieldKV[formId];
 
-          return _.get(
-            result,
-            `formFieldScores.${applicantId}.${formId}.${formFieldId}.mean`,
-          );
+          return _.get(result, `formFieldScores.${applicantId}.${formId}.${formFieldId}.mean`);
         })
         .filter((val) => val !== undefined);
 

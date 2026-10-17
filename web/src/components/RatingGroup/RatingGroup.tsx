@@ -2,6 +2,7 @@ import React, {forwardRef} from 'react';
 import {Radio, RadioLabel, StyledRatingGroup} from './RatingGroup.sc';
 import {Box, Typography} from 'components';
 import {useTheme} from 'styled-components';
+import {isSelected} from './utils';
 
 type Props = {
   name: string;
@@ -15,10 +16,7 @@ type Props = {
 };
 
 const RatingGroup = forwardRef<HTMLInputElement, Props>(
-  (
-    {name, label, description, options = [], value, defaultValue, ...props},
-    ref,
-  ) => {
+  ({name, label, description, options = [], value, defaultValue, ...props}, ref) => {
     const {spacing} = useTheme();
     return (
       <Box display="grid" rowGap={spacing.scale200}>
@@ -31,9 +29,8 @@ const RatingGroup = forwardRef<HTMLInputElement, Props>(
           {options.map((option) => {
             // either add default checked or checked prop
             const checked: any = {};
-            if (defaultValue == option.value) checked.defaultChecked = true;
-            // compare without type
-            else if (value == option.value) checked.checked = true; // compare without type
+            if (isSelected(defaultValue, option.value)) checked.defaultChecked = true;
+            else if (isSelected(value, option.value)) checked.checked = true;
 
             return (
               <Box key={option.value}>
@@ -47,9 +44,7 @@ const RatingGroup = forwardRef<HTMLInputElement, Props>(
                   {...props}
                 />
 
-                <RadioLabel htmlFor={name + '-' + option.value}>
-                  {option.label}
-                </RadioLabel>
+                <RadioLabel htmlFor={name + '-' + option.value}>{option.label}</RadioLabel>
               </Box>
             );
           })}

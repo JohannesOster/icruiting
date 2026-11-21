@@ -216,9 +216,13 @@ const FormBuilder: React.FC = () => {
   };
 
   /* iframe helper */
-  const domain = config.endpoint.url;
-  const iframeSrc = `${domain}/forms/${formId.current}/html`;
-  const formCode = `<!-- Begin icruiting webform --><iframe src="${iframeSrc}" style="width: 100%; border: none;" scroll="no" id="${formId.current}-iframe" ></iframe><script>window.addEventListener("message", (event) => {if (event.origin !== "${domain}") return;document.getElementById("${formId.current}-iframe").style.height=event.data + "px";});</script><!-- End icruiting webform -->`;
+  // The resize listener trusts messages from its own iframe (event.source), not from a fixed
+  // origin, so the snippet keeps auto-sizing if the API host ever changes or redirects. Snippets
+  // copied before JO-48 check event.origin against icruiting-api.herokuapp.com: never redirect
+  // that host (see docs/embed.md).
+  const iframeSrc = `${config.endpoint.url}/forms/${formId.current}/html`;
+  const iframeId = `${formId.current}-iframe`;
+  const formCode = `<!-- Begin icruiting webform --><iframe src="${iframeSrc}" style="width: 100%; border: none;" scroll="no" id="${iframeId}" ></iframe><script>window.addEventListener("message", (event) => {const iframe = document.getElementById("${iframeId}");if (!iframe || event.source !== iframe.contentWindow) return;iframe.style.height = event.data + "px";});</script><!-- End icruiting webform -->`;
   const copyCode = () => {
     const textarea = document.getElementById('form-code') as HTMLTextAreaElement;
     if (textarea) {

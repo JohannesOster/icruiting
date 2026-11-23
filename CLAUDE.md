@@ -29,6 +29,7 @@ the Lambda or the pool config scripts in `server/src/scripts/`.
 ## Hard rules
 
 - **Pushing to `main` deploys to production** — Netlify builds `main` on push (web), and `.github/workflows/deploy-server.yml` pushes a `git subtree split` of `server/` to Heroku on every `main` push that touches it. Never push to `main`. PRs only.
+- **Never redirect `icruiting-api.herokuapp.com`** — embed snippets pasted into customer sites before JO-48 check that origin; `docs/embed.md` has why and what to do instead.
 - Production data stays untouched: no `DATABASE_URL` pointing at RDS, no Cognito prod pool, no Stripe live key. Local Postgres only. Heroku is the exception — see "Heroku access" below.
 - Prefer "observe, then change" for anything that alters live behaviour (routes, emails, auth). If a ticket says to verify usage first, do that and report — don't skip to the removal.
 - Secrets: `.env*` files are git-ignored and must stay that way. Never commit webhooks, keys, or pool IDs beyond the ones already in `web/src/config.ts` (which are being moved to env, JO-23).
